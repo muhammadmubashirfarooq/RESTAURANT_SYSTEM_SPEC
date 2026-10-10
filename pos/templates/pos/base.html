@@ -56,6 +56,24 @@
                         </a>
                     </li>
                     {% endif %}
+
+                    {% if user.is_superuser or user.groups.all.0.name in 'Admin Manager' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if 'manage' in request.resolver_match.url_name %}active{% endif %}" href="#" id="manageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-sliders me-1"></i> Manage
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark shadow" aria-labelledby="manageDropdown">
+                            <li><a class="dropdown-item" href="{% url 'manage_menu' %}"><i class="fa-solid fa-utensils me-2 text-warning"></i> Menu Items</a></li>
+                            <li><a class="dropdown-item" href="{% url 'manage_categories' %}"><i class="fa-solid fa-list me-2 text-warning"></i> Categories</a></li>
+                            <li><a class="dropdown-item" href="{% url 'manage_tables' %}"><i class="fa-solid fa-chair me-2 text-warning"></i> Tables</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}" href="{% url 'settings' %}">
+                            <i class="fa-solid fa-gear me-1"></i> Settings
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
 
                 <div class="d-flex align-items-center gap-3">

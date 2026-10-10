@@ -1,0 +1,132 @@
+{% extends "pos/base.html" %}
+
+{% block title %}Manage Tables - Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1"><i class="fa-solid fa-chair me-2 text-warning"></i>Dining Tables</h2>
+        <p class="text-muted mb-0">Configure restaurant table names, seating capacities, and status.</p>
+    </div>
+    <button class="btn btn-warning rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addTableModal">
+        <i class="fa-solid fa-plus me-1"></i> Add Table
+    </button>
+</div>
+
+<div class="row g-3">
+    {% for table in tables %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="card h-100 glass-card border-0 shadow-sm">
+            <div class="card-body p-4 d-flex flex-column align-items-center text-center">
+                <div class="rounded-circle bg-warning bg-opacity-10 p-3 mb-3 text-warning">
+                    <i class="fa-solid fa-chair fs-2"></i>
+                </div>
+                <h4 class="fw-bold mb-1">{{ table.name }}</h4>
+                <p class="text-muted mb-2"><i class="fa-solid fa-users me-1"></i> Capacity: {{ table.capacity }} guests</p>
+                <div class="mb-3">
+                    {% if table.status == 'free' %}
+                        <span class="badge bg-success rounded-pill px-3 py-2 fs-7"><i class="fa-solid fa-circle-check me-1"></i> Free</span>
+                    {% elif table.status == 'occupied' %}
+                        <span class="badge bg-danger rounded-pill px-3 py-2 fs-7"><i class="fa-solid fa-utensils me-1"></i> Occupied</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fs-7"><i class="fa-solid fa-clock me-1"></i> Reserved</span>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2 w-100 mt-auto border-top pt-3">
+                    <button class="btn btn-sm btn-outline-warning rounded-pill flex-grow-1"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editTableModal{{ table.pk }}">
+                        <i class="fa-solid fa-pen me-1"></i> Edit
+                    </button>
+                    <form method="post" action="{% url 'manage_tables_delete' table.pk %}" class="flex-grow-1"
+                          onsubmit="return confirm('Delete table {{ table.name }}?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill w-100">
+                            <i class="fa-solid fa-trash me-1"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Table Modal -->
+    <div class="modal fade" id="editTableModal{{ table.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-modal text-dark">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen text-warning me-2"></i>Edit {{ table.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'manage_tables_edit' table.pk %}">
+                    {% csrf_token %}
+                    <div class="modal-body text-start">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Table Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ table.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Capacity (Guests)</label>
+                            <input type="number" name="capacity" class="form-control" value="{{ table.capacity }}" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="free" {% if table.status == 'free' %}selected{% endif %}>Free</option>
+                                <option value="occupied" {% if table.status == 'occupied' %}selected{% endif %}>Occupied</option>
+                                <option value="reserved" {% if table.status == 'reserved' %}selected{% endif %}>Reserved</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0">
+                        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning rounded-pill px-4">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card glass-card text-center p-5 border-0">
+            <i class="fa-solid fa-chair fs-1 text-muted mb-3"></i>
+            <h4>No Tables Found</h4>
+            <p class="text-muted">Click "Add Table" to create a new dining table.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Table Modal -->
+<div class="modal fade" id="addTableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-modal text-dark">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus-circle text-warning me-2"></i>Add New Table</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'manage_tables_save' %}">
+                {% csrf_token %}
+                <div class="modal-body text-start">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Table Name</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Capacity (Guests)</label>
+                        {{ form.capacity }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Status</label>
+                        {{ form.status }}
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning rounded-pill px-4">Create Table</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
