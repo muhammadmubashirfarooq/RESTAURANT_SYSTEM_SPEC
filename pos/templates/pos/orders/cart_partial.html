@@ -1,0 +1,167 @@
+{% load static %}
+<div class="card glass-card h-100 d-flex flex-column border-0 shadow">
+    <!-- Cart Header -->
+    <div class="p-3 border-bottom border-secondary-subtle d-flex justify-content-between align-items-center bg-dark bg-opacity-50 rounded-top">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="mb-0 fw-bold text-white">
+                    <i class="fa-solid fa-receipt text-warning me-2"></i>Order #{{ order.id }}
+                </h5>
+                <span class="badge {% if order.status == 'pending' %}bg-warning text-dark{% elif order.status == 'preparing' %}bg-primary{% elif order.status == 'ready' %}bg-info text-dark{% elif order.status == 'served' %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ order.get_status_display }}
+                </span>
+            </div>
+            <div class="text-muted small mt-1">
+                <span><i class="fa-solid fa-chair me-1"></i><strong>{{ order.table.name|default:'No Table' }}</strong></span>
+                {% if order.waiter %}
+                    <span class="ms-2"><i class="fa-solid fa-user-tie me-1"></i>{{ order.waiter.username }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <a href="{% url 'tables' %}" class="btn btn-outline-secondary btn-sm" title="Back to tables">
+            <i class="fa-solid fa-arrow-left me-1"></i> Tables
+        </a>
+    </div>
+
+    <!-- Items List (Scrollable) -->
+    <div class="p-3 flex-grow-1 overflow-auto cart-items-container" style="max-height: 52vh; min-height: 250px;">
+        {% with active_items=order.items.all %}
+            {% if active_items %}
+                <div class="d-flex flex-column gap-2">
+                    {% for item in active_items %}
+                        {% if item.status != 'cancelled' %}
+                        <div class="cart-item-row p-2 rounded bg-dark bg-opacity-25 border border-secondary-subtle">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1 me-2">
+                                    <div class="fw-semibold text-white">{{ item.menu_item.name }}</div>
+                                    <div class="text-muted small">
+                                        {{ setting.currency|default:'PKR' }} {{ item.unit_price }} &times; {{ item.quantity }}
+                                    </div>
+                                </div>
+                                <div class="fw-bold text-warning text-end">
+                                    {{ setting.currency|default:'PKR' }} {{ item.quantity|floatformat:0|default:1|floatformat:0 }}
+                                    <span class="d-none">hidden</span>
+                                    {% widthratio item.unit_price 1 item.quantity as item_line_total %}
+                                    <span class="text-white">{{ setting.currency|default:'PKR' }} {{ item_line_total }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Controls: Quantity +/- and Remove -->
+                            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary border-opacity-25">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" 
+                                            class="btn btn-outline-light btn-qty"
+                                            hx-post="{% url 'order_update_item' order.id item.id %}"
+                                            hx-vals='{"delta": -1}'
+                                            hx-target="#order-cart"
+                                            hx-swap="innerHTML"
+                                            title="Decrease quantity">
+                                        <i class="fa-solid fa-minus"></i>
+                                    </button>
+                                    <span class="btn btn-outline-light disabled text-white fw-bold px-3">
+                                        {{ item.quantity }}
+                                    </span>
+                                    <button type="button" 
+                                            class="btn btn-outline-light btn-qty"
+                                            hx-post="{% url 'order_update_item' order.id item.id %}"
+                                            hx-vals='{"delta": 1}'
+                                            hx-target="#order-cart"
+                                            hx-swap="innerHTML"
+                                            title="Increase quantity">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-2">
+                                    <!-- Toggle Note Input -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-secondary"
+                                            onclick="toggleNoteInput({{ item.id }})" 
+                                            title="Add special instructions">
+                                        <i class="fa-regular fa-comment-dots {% if item.note %}text-warning{% endif %}"></i>
+                                    </button>
+
+                                    <!-- Remove Item -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger"
+                                            hx-post="{% url 'order_remove_item' order.id item.id %}"
+                                            hx-target="#order-cart"
+                                            hx-swap="innerHTML"
+                                            title="Remove item">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Note Input row (Collapsible / inline) -->
+                            <div id="note-wrapper-{{ item.id }}" class="mt-2 {% if not item.note %}d-none{% endif %}">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="fa-solid fa-pen"></i></span>
+                                    <input type="text" 
+                                           name="note" 
+                                           class="form-control bg-dark text-white border-secondary small" 
+                                           placeholder="E.g. No onions, extra spicy" 
+                                           value="{{ item.note }}"
+                                           hx-post="{% url 'order_update_item' order.id item.id %}"
+                                           hx-trigger="change"
+                                           hx-target="#order-cart"
+                                           hx-swap="innerHTML">
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="h-100 d-flex flex-column justify-content-center align-items-center text-center text-muted py-5">
+                    <i class="fa-solid fa-cart-shopping fs-1 mb-2 opacity-50"></i>
+                    <h6 class="text-white">Cart is Empty</h6>
+                    <p class="small mb-0">Select items from the menu on the left to start building this order.</p>
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Totals & Actions Footer -->
+    <div class="p-3 border-top border-secondary-subtle bg-dark bg-opacity-75 rounded-bottom">
+        <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Subtotal:</span>
+            <span class="text-white fw-semibold">{{ setting.currency|default:'PKR' }} {{ order.subtotal|floatformat:2 }}</span>
+        </div>
+        {% if order.tax_rate > 0 %}
+        <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Tax ({{ order.tax_rate }}%):</span>
+            <span class="text-white fw-semibold">{{ setting.currency|default:'PKR' }} {{ order.tax|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if order.discount > 0 %}
+        <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Discount:</span>
+            <span class="text-danger fw-semibold">- {{ setting.currency|default:'PKR' }} {{ order.discount|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="d-flex justify-content-between align-items-center my-2 pt-2 border-top border-secondary border-opacity-50">
+            <span class="fw-bold text-white fs-5">Total:</span>
+            <span class="fw-bold text-warning fs-4">{{ setting.currency|default:'PKR' }} {{ order.total|floatformat:2 }}</span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-2 mt-3">
+            <form method="post" action="{% url 'order_cancel' order.id %}" class="w-50" onsubmit="return confirm('Are you sure you want to cancel Order #{{ order.id }}? This will release Table {{ order.table.name }}.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger w-100 py-2 fw-semibold">
+                    <i class="fa-solid fa-xmark me-1"></i> Cancel Order
+                </button>
+            </form>
+
+            <form method="post" action="{% url 'order_send' order.id %}" class="w-50">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="btn btn-primary-custom w-100 py-2 fw-bold"
+                        {% if not order.items.exists %}disabled{% endif %}>
+                    <i class="fa-solid fa-paper-plane me-1"></i> Send to Kitchen
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

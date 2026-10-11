@@ -1,0 +1,164 @@
+{% extends 'pos/base.html' %}
+
+{% block title %}Dining Tables | Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <!-- Header with Stats -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="h3 fw-bold mb-1 text-white">
+                <i class="fa-solid fa-chair text-warning me-2"></i>Floor & Dining Tables
+            </h2>
+            <p class="text-muted small mb-0">Select an open table to take orders or tap an occupied table to review.</p>
+        </div>
+        
+        <!-- Filter Pills & Summary -->
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-light active filter-btn" data-filter="all">
+                All <span class="badge bg-secondary ms-1">{{ stats.total }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-success filter-btn" data-filter="free">
+                <i class="fa-solid fa-circle-check me-1"></i>Free <span class="badge bg-success ms-1">{{ stats.free }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="occupied">
+                <i class="fa-solid fa-fire-burner me-1"></i>Occupied <span class="badge bg-danger ms-1">{{ stats.occupied }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="reserved">
+                <i class="fa-solid fa-bookmark me-1"></i>Reserved <span class="badge bg-warning text-dark ms-1">{{ stats.reserved }}</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Grid -->
+    <div class="row g-3" id="tables-grid">
+        {% for item in table_list %}
+            {% with table=item.table order=item.active_order %}
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2 table-card-col" data-status="{{ table.status }}">
+                {% if table.status == 'free' %}
+                    <a href="{% url 'order_new' table.id %}" class="text-decoration-none">
+                        <div class="card table-card table-status-free h-100 p-3 shadow-sm position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <span class="badge status-badge-free">
+                                    <i class="fa-solid fa-circle-dot me-1"></i>Free
+                                </span>
+                                <span class="text-muted small">
+                                    <i class="fa-solid fa-user-group me-1"></i>{{ table.capacity }}
+                                </span>
+                            </div>
+                            
+                            <div class="table-icon-wrapper mb-3 text-center">
+                                <div class="table-circle table-circle-free mx-auto">
+                                    <i class="fa-solid fa-utensils fs-4"></i>
+                                </div>
+                                <h4 class="fw-bold text-white mt-2 mb-0">{{ table.name }}</h4>
+                            </div>
+
+                            <div class="text-center mt-auto pt-2 border-top border-secondary-subtle">
+                                <span class="btn btn-sm btn-action-free w-100 fw-semibold">
+                                    <i class="fa-solid fa-plus me-1"></i> Start Order
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                {% elif table.status == 'occupied' %}
+                    <a href="{% if order %}{% url 'order_detail' order.id %}{% else %}{% url 'order_new' table.id %}{% endif %}" class="text-decoration-none">
+                        <div class="card table-card table-status-occupied h-100 p-3 shadow-sm position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge status-badge-occupied">
+                                    <i class="fa-solid fa-fire me-1"></i>Occupied
+                                </span>
+                                <span class="text-muted small">
+                                    <i class="fa-solid fa-user-group me-1"></i>{{ table.capacity }}
+                                </span>
+                            </div>
+
+                            <div class="table-icon-wrapper mb-2 text-center">
+                                <div class="table-circle table-circle-occupied mx-auto">
+                                    <i class="fa-solid fa-bowl-food fs-4"></i>
+                                </div>
+                                <h4 class="fw-bold text-white mt-2 mb-1">{{ table.name }}</h4>
+                                {% if order %}
+                                    <div class="badge bg-dark border border-danger-subtle text-danger-emphasis py-1 px-2 mb-1">
+                                        Order #{{ order.id }} &bull; {{ order.get_status_display }}
+                                    </div>
+                                    <div class="text-warning small fw-semibold">
+                                        {{ setting.currency|default:'PKR' }} {{ order.total|floatformat:2 }}
+                                    </div>
+                                    {% if order.waiter %}
+                                        <div class="text-muted smaller mt-1">
+                                            <i class="fa-solid fa-user-tie me-1"></i>{{ order.waiter.username }}
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-danger">In Use</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="text-center mt-auto pt-2 border-top border-secondary-subtle">
+                                <span class="btn btn-sm btn-action-occupied w-100 fw-semibold">
+                                    <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Open Order
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                {% else %}
+                    <!-- Reserved -->
+                    <a href="{% if order %}{% url 'order_detail' order.id %}{% else %}{% url 'order_new' table.id %}{% endif %}" class="text-decoration-none">
+                        <div class="card table-card table-status-reserved h-100 p-3 shadow-sm position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <span class="badge status-badge-reserved">
+                                    <i class="fa-solid fa-bookmark me-1"></i>Reserved
+                                </span>
+                                <span class="text-muted small">
+                                    <i class="fa-solid fa-user-group me-1"></i>{{ table.capacity }}
+                                </span>
+                            </div>
+
+                            <div class="table-icon-wrapper mb-3 text-center">
+                                <div class="table-circle table-circle-reserved mx-auto">
+                                    <i class="fa-solid fa-clock fs-4"></i>
+                                </div>
+                                <h4 class="fw-bold text-white mt-2 mb-0">{{ table.name }}</h4>
+                            </div>
+
+                            <div class="text-center mt-auto pt-2 border-top border-secondary-subtle">
+                                <span class="btn btn-sm btn-action-reserved w-100 fw-semibold">
+                                    <i class="fa-solid fa-plus me-1"></i> Start Order
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                {% endif %}
+            </div>
+            {% endwith %}
+        {% empty %}
+            <div class="col-12 py-5 text-center text-muted">
+                <i class="fa-solid fa-chair fs-1 mb-3"></i>
+                <h5>No dining tables configured yet.</h5>
+                <p>Go to <a href="{% url 'manage_tables' %}" class="text-warning">Manage Tables</a> to add tables.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const filter = btn.getAttribute('data-filter');
+            const cards = document.querySelectorAll('.table-card-col');
+            cards.forEach(card => {
+                if (filter === 'all' || card.getAttribute('data-status') === filter) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

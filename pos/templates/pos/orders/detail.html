@@ -1,0 +1,167 @@
+{% extends 'pos/base.html' %}
+{% load static %}
+
+{% block title %}Order #{{ order.id }} &bull; Table {{ order.table.name|default:'Takeaway' }} | Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-1">
+    <div class="row g-3">
+        <!-- LEFT COLUMN: Menu Items & Categories -->
+        <div class="col-lg-7 col-xl-8">
+            <!-- Search & Filter Bar -->
+            <div class="card glass-card border-0 p-3 mb-3 shadow-sm">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" id="menu-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Search menu items..." autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" id="clear-search-btn"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end text-muted small">
+                        <span>Table: <strong class="text-white">{{ order.table.name|default:'Takeaway' }}</strong></span> &bull; 
+                        <span>Waiter: <strong class="text-white">{{ order.waiter.username|default:'Staff' }}</strong></span>
+                    </div>
+                </div>
+
+                <!-- Category Pills (Horizontal Scrollable) -->
+                <div class="d-flex gap-2 overflow-auto pt-3 category-pills-bar">
+                    <button class="btn btn-sm btn-outline-light active category-filter-btn" data-category="all">
+                        All Items
+                    </button>
+                    {% for cat in categories %}
+                    <button class="btn btn-sm btn-outline-light category-filter-btn" data-category="{{ cat.id }}">
+                        {{ cat.name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Menu Items Grid -->
+            <div class="row g-3" id="menu-items-grid">
+                {% for item in menu_items %}
+                <div class="col-6 col-md-4 col-xl-3 menu-item-card-col" 
+                     data-category="{{ item.category_id }}" 
+                     data-name="{{ item.name|lower }}"
+                     data-desc="{{ item.description|lower }}">
+                    <div class="card h-100 menu-item-card glass-card border-0 p-2 shadow-sm position-relative {% if not item.is_available %}opacity-50{% endif %}">
+                        <!-- Image or placeholder -->
+                        <div class="menu-item-img-container mb-2 rounded overflow-hidden position-relative">
+                            {% if item.image %}
+                                <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-100 menu-item-img" style="height: 110px; object-fit: cover;">
+                            {% else %}
+                                <div class="w-100 d-flex align-items-center justify-content-center bg-dark text-muted" style="height: 110px;">
+                                    <i class="fa-solid fa-utensils fs-3 opacity-25"></i>
+                                </div>
+                            {% endif %}
+                            <span class="badge bg-dark bg-opacity-75 text-warning position-absolute top-0 start-0 m-2 border border-warning-subtle small">
+                                {{ item.category.name }}
+                            </span>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="d-flex flex-column flex-grow-1">
+                            <h6 class="fw-bold text-white mb-1 text-truncate" title="{{ item.name }}">{{ item.name }}</h6>
+                            {% if item.description %}
+                                <p class="text-muted smaller mb-2 text-truncate-2" style="font-size: 0.78rem;">{{ item.description }}</p>
+                            {% endif %}
+                            
+                            <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle">
+                                <span class="fw-bold text-warning fs-6">
+                                    {{ setting.currency|default:'PKR' }} {{ item.price }}
+                                </span>
+
+                                {% if item.is_available %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-primary-custom px-3 rounded-pill btn-add-item"
+                                            hx-post="{% url 'order_add_item' order.id %}"
+                                            hx-vals='{"menu_item_id": {{ item.id }}}'
+                                            hx-target="#order-cart"
+                                            hx-swap="innerHTML">
+                                        <i class="fa-solid fa-plus me-1"></i> Add
+                                    </button>
+                                {% else %}
+                                    <span class="badge bg-secondary">Unavailable</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 py-5 text-center text-muted">
+                    <i class="fa-solid fa-bowl-food fs-1 mb-2 opacity-50"></i>
+                    <p>No menu items found. Add items from the <a href="{% url 'manage_menu' %}" class="text-warning">Manage Menu</a> screen.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Live Order Cart -->
+        <div class="col-lg-5 col-xl-4">
+            <div id="order-cart" class="sticky-top" style="top: 80px;">
+                {% include "pos/orders/cart_partial.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Note toggle helper
+    function toggleNoteInput(itemId) {
+        const wrapper = document.getElementById('note-wrapper-' + itemId);
+        if (wrapper) {
+            wrapper.classList.toggle('d-none');
+            const input = wrapper.querySelector('input');
+            if (input && !wrapper.classList.contains('d-none')) {
+                input.focus();
+            }
+        }
+    }
+
+    // Client-side search and category filtering
+    const searchInput = document.getElementById('menu-search-input');
+    const clearBtn = document.getElementById('clear-search-btn');
+    const categoryBtns = document.querySelectorAll('.category-filter-btn');
+    const itemCards = document.querySelectorAll('.menu-item-card-col');
+    let activeCategory = 'all';
+
+    function filterMenuItems() {
+        const query = searchInput.value.trim().toLowerCase();
+        itemCards.forEach(card => {
+            const itemCat = card.getAttribute('data-category');
+            const itemName = card.getAttribute('data-name');
+            const itemDesc = card.getAttribute('data-desc');
+
+            const matchesCategory = (activeCategory === 'all' || itemCat === activeCategory);
+            const matchesSearch = (!query || itemName.includes(query) || itemDesc.includes(query));
+
+            if (matchesCategory && matchesSearch) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterMenuItems);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            filterMenuItems();
+        });
+    }
+
+    categoryBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            categoryBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCategory = btn.getAttribute('data-category');
+            filterMenuItems();
+        });
+    });
+</script>
+{% endblock %}

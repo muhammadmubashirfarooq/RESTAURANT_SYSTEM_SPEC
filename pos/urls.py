@@ -10,6 +10,15 @@ urlpatterns = [
     path("kitchen/", views.kitchen_view, name="kitchen"),
     path("billing/", views.billing_view, name="billing"),
 
+    # Phase 3: Order Taking
+    path("orders/new/<int:table_id>/", views.order_create_view, name="order_new"),
+    path("orders/<int:order_id>/", views.order_detail_view, name="order_detail"),
+    path("orders/<int:order_id>/add-item/", views.order_add_item_view, name="order_add_item"),
+    path("orders/<int:order_id>/update-item/<int:item_id>/", views.order_update_item_view, name="order_update_item"),
+    path("orders/<int:order_id>/remove-item/<int:item_id>/", views.order_remove_item_view, name="order_remove_item"),
+    path("orders/<int:order_id>/send/", views.order_send_view, name="order_send"),
+    path("orders/<int:order_id>/cancel/", views.order_cancel_view, name="order_cancel"),
+
     # Category Management
     path("manage/categories/", views.category_list_view, name="manage_categories"),
     path("manage/categories/save/", views.category_save_view, name="manage_categories_save"),

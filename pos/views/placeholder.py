@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from pos.permissions import role_required, get_user_role
-from pos.models import Category, MenuItem, DiningTable, Order, Setting
+from pos.models import MenuItem, DiningTable, Order, Setting
 
 
 @role_required("Admin", "Manager")
@@ -13,16 +13,6 @@ def dashboard_view(request):
         "total_orders": Order.objects.count(),
         "total_tables": DiningTable.objects.count(),
         "total_menu_items": MenuItem.objects.count(),
-    }
-    return render(request, "pos/placeholder.html", context)
-
-
-@role_required("Admin", "Manager", "Waiter")
-def tables_view(request):
-    context = {
-        "title": "Tables Grid",
-        "role": get_user_role(request.user),
-        "tables": DiningTable.objects.all(),
     }
     return render(request, "pos/placeholder.html", context)
 
