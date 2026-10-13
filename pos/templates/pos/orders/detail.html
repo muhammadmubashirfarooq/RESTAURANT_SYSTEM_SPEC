@@ -98,7 +98,12 @@
 
         <!-- RIGHT COLUMN: Live Order Cart -->
         <div class="col-lg-5 col-xl-4">
-            <div id="order-cart" class="sticky-top" style="top: 80px;">
+            <div id="order-cart" 
+                 class="sticky-top" 
+                 style="top: 80px;"
+                 hx-get="{% url 'order_cart' order.id %}"
+                 hx-trigger="every 5s"
+                 hx-swap="innerHTML">
                 {% include "pos/orders/cart_partial.html" %}
             </div>
         </div>

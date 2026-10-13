@@ -17,15 +17,6 @@ def dashboard_view(request):
     return render(request, "pos/placeholder.html", context)
 
 
-@role_required("Admin", "Manager", "Kitchen")
-def kitchen_view(request):
-    context = {
-        "title": "Kitchen Display System",
-        "role": get_user_role(request.user),
-        "pending_orders": Order.objects.filter(status__in=["pending", "preparing"]),
-    }
-    return render(request, "pos/placeholder.html", context)
-
 
 @role_required("Admin", "Manager", "Cashier")
 def billing_view(request):

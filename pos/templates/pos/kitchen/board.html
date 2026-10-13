@@ -1,0 +1,45 @@
+{% extends 'pos/base.html' %}
+{% load static %}
+
+{% block title %}Kitchen Display System (KDS) | Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2 kitchen-board-container">
+    <!-- Header with Live Sync Status -->
+    <div class="card glass-card border-0 p-3 mb-3 shadow-sm">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h4 class="fw-bold text-white mb-0 d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-fire text-warning"></i> Kitchen Display System
+                </h4>
+                <div class="text-muted small mt-1">
+                    Real-time kitchen order management &bull; Auto-syncing live orders
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2 bg-dark bg-opacity-75 px-3 py-2 rounded-pill border border-secondary-subtle">
+                    <span class="sync-dot"></span>
+                    <span class="small text-white-50">Live Sync: <strong>5s</strong></span>
+                </div>
+
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" 
+                        hx-get="{% url 'kitchen_partial' %}" 
+                        hx-target="#kitchen-board-container" 
+                        hx-swap="innerHTML"
+                        title="Force refresh kitchen board">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Polling Container via HTMX (every 5 seconds) -->
+    <div id="kitchen-board-container"
+         hx-get="{% url 'kitchen_partial' %}"
+         hx-trigger="every 5s"
+         hx-swap="innerHTML">
+        {% include "pos/kitchen/board_partial.html" %}
+    </div>
+</div>
+{% endblock %}

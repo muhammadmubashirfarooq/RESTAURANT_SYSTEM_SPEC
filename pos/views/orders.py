@@ -50,6 +50,19 @@ def order_detail_view(request, order_id):
 
 
 @role_required("Admin", "Manager", "Waiter")
+def order_cart_view(request, order_id):
+    """
+    HTMX GET view to refresh order cart fragment with live item statuses.
+    """
+    order = get_object_or_404(
+        Order.objects.select_related("table", "waiter").prefetch_related("items__menu_item"),
+        pk=order_id,
+    )
+    setting = Setting.objects.first()
+    return render(request, "pos/orders/cart_partial.html", {"order": order, "setting": setting})
+
+
+@role_required("Admin", "Manager", "Waiter")
 def order_add_item_view(request, order_id):
     """
     HTMX POST view to add a menu item to the order cart.

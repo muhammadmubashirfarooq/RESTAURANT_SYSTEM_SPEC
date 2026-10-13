@@ -267,3 +267,143 @@ body {
     padding: 0.2rem 0.5rem;
     font-size: 0.75rem;
 }
+
+/* ========================================================
+   Phase 4: Kitchen Display System (KDS) Styles
+   ======================================================== */
+.kitchen-board-container {
+    min-height: calc(100vh - 120px);
+}
+
+.kitchen-column {
+    background: rgba(22, 28, 42, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 72vh;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.kitchen-column-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(30, 38, 56, 0.6);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+}
+
+.kitchen-cards-container {
+    padding: 1rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: calc(100vh - 210px);
+}
+
+.kitchen-cards-container::-webkit-scrollbar {
+    width: 6px;
+}
+.kitchen-cards-container::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 6px;
+}
+
+/* Order Card */
+.kitchen-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.kitchen-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Column Theme Accents */
+.kitchen-card-pending {
+    border-left: 5px solid var(--warning-color);
+}
+
+.kitchen-card-preparing {
+    border-left: 5px solid #38bdf8;
+}
+
+.kitchen-card-ready {
+    border-left: 5px solid var(--success-color);
+}
+
+/* New Order Glowing Highlight */
+@keyframes newOrderPulse {
+    0% {
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.4), inset 0 0 6px rgba(245, 158, 11, 0.2);
+        border-color: rgba(245, 158, 11, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 22px rgba(245, 158, 11, 0.8), inset 0 0 12px rgba(245, 158, 11, 0.35);
+        border-color: #fbbf24;
+    }
+    100% {
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.4), inset 0 0 6px rgba(245, 158, 11, 0.2);
+        border-color: rgba(245, 158, 11, 0.8);
+    }
+}
+
+.new-order-highlight {
+    animation: newOrderPulse 2s infinite ease-in-out;
+}
+
+.badge-new-pulse {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-size: 0.7rem;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* Pulse Live Sync Dot */
+@keyframes syncPulse {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.sync-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--success-color);
+    border-radius: 50%;
+    display: inline-block;
+    animation: syncPulse 2s infinite;
+}
+
+/* Touch-friendly Action Buttons */
+.btn-kitchen-action {
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.82rem;
+    transition: all 0.2s ease;
+}
+
+.btn-kitchen-action:hover {
+    transform: scale(1.03);
+}
+
+.kitchen-item-row {
+    background: rgba(18, 24, 36, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 0.5rem 0.65rem;
+    transition: background 0.15s ease;
+}
+.kitchen-item-row:hover {
+    background: rgba(18, 24, 36, 0.8);
+}

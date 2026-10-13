@@ -7,12 +7,16 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
     path("dashboard/", views.dashboard_view, name="dashboard"),
     path("tables/", views.tables_view, name="tables"),
-    path("kitchen/", views.kitchen_view, name="kitchen"),
+    path("kitchen/", views.kitchen_board_view, name="kitchen"),
+    path("kitchen/partial/", views.kitchen_partial_view, name="kitchen_partial"),
+    path("kitchen/item/<int:item_id>/status/", views.kitchen_item_status_view, name="kitchen_item_status"),
+    path("kitchen/order/<int:order_id>/batch-status/", views.kitchen_order_batch_status_view, name="kitchen_order_batch_status"),
     path("billing/", views.billing_view, name="billing"),
 
     # Phase 3: Order Taking
     path("orders/new/<int:table_id>/", views.order_create_view, name="order_new"),
     path("orders/<int:order_id>/", views.order_detail_view, name="order_detail"),
+    path("orders/<int:order_id>/cart/", views.order_cart_view, name="order_cart"),
     path("orders/<int:order_id>/add-item/", views.order_add_item_view, name="order_add_item"),
     path("orders/<int:order_id>/update-item/<int:item_id>/", views.order_update_item_view, name="order_update_item"),
     path("orders/<int:order_id>/remove-item/<int:item_id>/", views.order_remove_item_view, name="order_remove_item"),

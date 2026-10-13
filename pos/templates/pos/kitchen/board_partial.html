@@ -1,0 +1,357 @@
+{% load static %}
+<div class="row g-3">
+    <!-- ==========================================
+         COLUMN 1: PENDING ORDERS
+         ========================================== -->
+    <div class="col-lg-4">
+        <div class="kitchen-column">
+            <!-- Column Header -->
+            <div class="kitchen-column-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-5 text-warning"><i class="fa-solid fa-clock"></i></span>
+                    <h5 class="mb-0 fw-bold text-white">Pending</h5>
+                </div>
+                <span class="badge bg-warning text-dark fs-6 px-3 py-1 rounded-pill fw-bold">
+                    {{ pending_orders|length }}
+                </span>
+            </div>
+
+            <!-- Cards Container -->
+            <div class="kitchen-cards-container">
+                {% for order in pending_orders %}
+                <div class="card kitchen-card kitchen-card-pending {% if order.is_new %}new-order-highlight{% endif %} p-3 shadow-sm" id="kitchen-order-{{ order.id }}">
+                    <!-- Card Top: Table & Order Info -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="fw-bold text-white mb-0">
+                                    <i class="fa-solid fa-chair text-warning me-1"></i>{{ order.table.name|default:'Takeaway' }}
+                                </h5>
+                                <span class="badge bg-secondary-subtle text-light border border-secondary small">
+                                    #{{ order.id }}
+                                </span>
+                                {% if order.is_new %}
+                                <span class="badge badge-new-pulse rounded-pill px-2 py-1">
+                                    <i class="fa-solid fa-bolt me-1"></i>NEW
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-muted smaller mt-1">
+                                <i class="fa-solid fa-user-tie me-1"></i>{{ order.waiter.username|default:'Staff' }}
+                                <span class="mx-1">&bull;</span>
+                                <span class="badge bg-dark border border-secondary text-info">
+                                    {{ order.get_order_type_display }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Elapsed Time -->
+                        <div class="text-end">
+                            <span class="badge bg-dark border border-warning-subtle text-warning fs-7 px-2 py-1">
+                                <i class="fa-regular fa-clock me-1"></i>{{ order.elapsed_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if order.notes %}
+                    <div class="bg-dark bg-opacity-75 p-2 rounded mb-2 border border-warning-subtle text-warning small">
+                        <i class="fa-solid fa-note-sticky me-1"></i>{{ order.notes }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Items List -->
+                    <div class="d-flex flex-column gap-2 my-2">
+                        {% for item in order.active_items %}
+                        <div class="kitchen-item-row d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <div class="fw-semibold text-white">
+                                    <span class="text-warning fw-bold fs-6 me-1">{{ item.quantity }}&times;</span>
+                                    {{ item.menu_item.name }}
+                                </div>
+                                {% if item.note %}
+                                <div class="text-warning small fst-italic mt-1">
+                                    <i class="fa-regular fa-comment-dots me-1"></i>{{ item.note }}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- One-click button: pending -> preparing -->
+                            <div>
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-warning btn-kitchen-action text-nowrap"
+                                        hx-post="{% url 'kitchen_item_status' item.id %}"
+                                        hx-vals='{"status": "preparing"}'
+                                        hx-target="#kitchen-board-container"
+                                        hx-swap="innerHTML"
+                                        title="Move to Preparing">
+                                    <i class="fa-solid fa-fire-burner me-1"></i> Start
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Batch Action: Start All -->
+                    <div class="mt-2 pt-2 border-top border-secondary-subtle d-flex justify-content-end">
+                        <button type="button" 
+                                class="btn btn-sm btn-warning w-100 fw-bold"
+                                hx-post="{% url 'kitchen_order_batch_status' order.id %}"
+                                hx-vals='{"status": "preparing"}'
+                                hx-target="#kitchen-board-container"
+                                hx-swap="innerHTML">
+                            <i class="fa-solid fa-play me-1"></i> Start All Items
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center text-muted py-5">
+                    <i class="fa-solid fa-check-circle fs-1 mb-2 text-warning opacity-50"></i>
+                    <h6 class="text-white-50">No Pending Orders</h6>
+                    <p class="smaller text-muted mb-0">Incoming orders from waiters will appear here automatically.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         COLUMN 2: PREPARING ORDERS
+         ========================================== -->
+    <div class="col-lg-4">
+        <div class="kitchen-column">
+            <!-- Column Header -->
+            <div class="kitchen-column-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-5 text-info"><i class="fa-solid fa-fire-burner"></i></span>
+                    <h5 class="mb-0 fw-bold text-white">Preparing</h5>
+                </div>
+                <span class="badge bg-info text-dark fs-6 px-3 py-1 rounded-pill fw-bold">
+                    {{ preparing_orders|length }}
+                </span>
+            </div>
+
+            <!-- Cards Container -->
+            <div class="kitchen-cards-container">
+                {% for order in preparing_orders %}
+                <div class="card kitchen-card kitchen-card-preparing p-3 shadow-sm" id="kitchen-order-{{ order.id }}">
+                    <!-- Card Top: Table & Order Info -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="fw-bold text-white mb-0">
+                                    <i class="fa-solid fa-chair text-info me-1"></i>{{ order.table.name|default:'Takeaway' }}
+                                </h5>
+                                <span class="badge bg-secondary-subtle text-light border border-secondary small">
+                                    #{{ order.id }}
+                                </span>
+                            </div>
+                            <div class="text-muted smaller mt-1">
+                                <i class="fa-solid fa-user-tie me-1"></i>{{ order.waiter.username|default:'Staff' }}
+                                <span class="mx-1">&bull;</span>
+                                <span class="badge bg-dark border border-secondary text-info">
+                                    {{ order.get_order_type_display }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Elapsed Time -->
+                        <div class="text-end">
+                            <span class="badge bg-dark border border-info-subtle text-info fs-7 px-2 py-1">
+                                <i class="fa-regular fa-clock me-1"></i>{{ order.elapsed_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if order.notes %}
+                    <div class="bg-dark bg-opacity-75 p-2 rounded mb-2 border border-info-subtle text-info small">
+                        <i class="fa-solid fa-note-sticky me-1"></i>{{ order.notes }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Items List -->
+                    <div class="d-flex flex-column gap-2 my-2">
+                        {% for item in order.active_items %}
+                        <div class="kitchen-item-row d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <div class="fw-semibold text-white">
+                                    <span class="text-info fw-bold fs-6 me-1">{{ item.quantity }}&times;</span>
+                                    {{ item.menu_item.name }}
+                                </div>
+                                {% if item.note %}
+                                <div class="text-warning small fst-italic mt-1">
+                                    <i class="fa-regular fa-comment-dots me-1"></i>{{ item.note }}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Status and action buttons -->
+                            <div class="d-flex align-items-center gap-2">
+                                {% if item.status == 'pending' %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-warning btn-kitchen-action text-nowrap"
+                                            hx-post="{% url 'kitchen_item_status' item.id %}"
+                                            hx-vals='{"status": "preparing"}'
+                                            hx-target="#kitchen-board-container"
+                                            hx-swap="innerHTML"
+                                            title="Start preparing">
+                                        <i class="fa-solid fa-fire me-1"></i> Start
+                                    </button>
+                                {% elif item.status == 'preparing' %}
+                                    <!-- One-click button: preparing -> ready -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-success btn-kitchen-action text-nowrap"
+                                            hx-post="{% url 'kitchen_item_status' item.id %}"
+                                            hx-vals='{"status": "ready"}'
+                                            hx-target="#kitchen-board-container"
+                                            hx-swap="innerHTML"
+                                            title="Mark as Ready">
+                                        <i class="fa-solid fa-check me-1"></i> Ready
+                                    </button>
+                                {% elif item.status == 'ready' %}
+                                    <span class="badge bg-success bg-opacity-75 text-white">
+                                        <i class="fa-solid fa-check-double me-1"></i>Ready
+                                    </span>
+                                {% elif item.status == 'served' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fa-solid fa-utensils me-1"></i>Served
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Batch Action: Mark All Ready -->
+                    <div class="mt-2 pt-2 border-top border-secondary-subtle d-flex justify-content-end">
+                        <button type="button" 
+                                class="btn btn-sm btn-info w-100 fw-bold text-dark"
+                                hx-post="{% url 'kitchen_order_batch_status' order.id %}"
+                                hx-vals='{"status": "ready"}'
+                                hx-target="#kitchen-board-container"
+                                hx-swap="innerHTML">
+                            <i class="fa-solid fa-check-double me-1"></i> Mark All Ready
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center text-muted py-5">
+                    <i class="fa-solid fa-kitchen-set fs-1 mb-2 text-info opacity-50"></i>
+                    <h6 class="text-white-50">No Orders in Preparation</h6>
+                    <p class="smaller text-muted mb-0">Started dishes currently cooking appear here.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         COLUMN 3: READY ORDERS
+         ========================================== -->
+    <div class="col-lg-4">
+        <div class="kitchen-column">
+            <!-- Column Header -->
+            <div class="kitchen-column-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-5 text-success"><i class="fa-solid fa-bell-concierge"></i></span>
+                    <h5 class="mb-0 fw-bold text-white">Ready</h5>
+                </div>
+                <span class="badge bg-success text-white fs-6 px-3 py-1 rounded-pill fw-bold">
+                    {{ ready_orders|length }}
+                </span>
+            </div>
+
+            <!-- Cards Container -->
+            <div class="kitchen-cards-container">
+                {% for order in ready_orders %}
+                <div class="card kitchen-card kitchen-card-ready p-3 shadow-sm" id="kitchen-order-{{ order.id }}">
+                    <!-- Card Top: Table & Order Info -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h5 class="fw-bold text-white mb-0">
+                                    <i class="fa-solid fa-chair text-success me-1"></i>{{ order.table.name|default:'Takeaway' }}
+                                </h5>
+                                <span class="badge bg-secondary-subtle text-light border border-secondary small">
+                                    #{{ order.id }}
+                                </span>
+                            </div>
+                            <div class="text-muted smaller mt-1">
+                                <i class="fa-solid fa-user-tie me-1"></i>Waitstaff: <strong class="text-white">{{ order.waiter.username|default:'Staff' }}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Elapsed Time -->
+                        <div class="text-end">
+                            <span class="badge bg-dark border border-success-subtle text-success fs-7 px-2 py-1">
+                                <i class="fa-regular fa-clock me-1"></i>{{ order.elapsed_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {% if order.notes %}
+                    <div class="bg-dark bg-opacity-75 p-2 rounded mb-2 border border-success-subtle text-success small">
+                        <i class="fa-solid fa-note-sticky me-1"></i>{{ order.notes }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Items List -->
+                    <div class="d-flex flex-column gap-2 my-2">
+                        {% for item in order.active_items %}
+                        <div class="kitchen-item-row d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <div class="fw-semibold text-white">
+                                    <span class="text-success fw-bold fs-6 me-1">{{ item.quantity }}&times;</span>
+                                    {{ item.menu_item.name }}
+                                </div>
+                                {% if item.note %}
+                                <div class="text-warning small fst-italic mt-1">
+                                    <i class="fa-regular fa-comment-dots me-1"></i>{{ item.note }}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Status and action buttons -->
+                            <div class="d-flex align-items-center gap-2">
+                                {% if item.status == 'ready' %}
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-success btn-kitchen-action text-nowrap"
+                                            hx-post="{% url 'kitchen_item_status' item.id %}"
+                                            hx-vals='{"status": "served"}'
+                                            hx-target="#kitchen-board-container"
+                                            hx-swap="innerHTML"
+                                            title="Mark as Served">
+                                        <i class="fa-solid fa-utensils me-1"></i> Mark Served
+                                    </button>
+                                {% elif item.status == 'served' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fa-solid fa-check me-1"></i>Served
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Batch Action: Mark All Served -->
+                    <div class="mt-2 pt-2 border-top border-secondary-subtle d-flex justify-content-end">
+                        <button type="button" 
+                                class="btn btn-sm btn-success w-100 fw-bold"
+                                hx-post="{% url 'kitchen_order_batch_status' order.id %}"
+                                hx-vals='{"status": "served"}'
+                                hx-target="#kitchen-board-container"
+                                hx-swap="innerHTML">
+                            <i class="fa-solid fa-check me-1"></i> Serve All Items
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center text-muted py-5">
+                    <i class="fa-solid fa-bell-concierge fs-1 mb-2 text-success opacity-50"></i>
+                    <h6 class="text-white-50">No Ready Orders</h6>
+                    <p class="smaller text-muted mb-0">Dishes completed by the kitchen will appear here for serving.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>

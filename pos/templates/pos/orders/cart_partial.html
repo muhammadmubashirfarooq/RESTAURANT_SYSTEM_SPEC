@@ -7,12 +7,17 @@
                 <h5 class="mb-0 fw-bold text-white">
                     <i class="fa-solid fa-receipt text-warning me-2"></i>Order #{{ order.id }}
                 </h5>
-                <span class="badge {% if order.status == 'pending' %}bg-warning text-dark{% elif order.status == 'preparing' %}bg-primary{% elif order.status == 'ready' %}bg-info text-dark{% elif order.status == 'served' %}bg-success{% else %}bg-secondary{% endif %}">
+                <span class="badge {% if order.status == 'pending' %}bg-warning text-dark{% elif order.status == 'preparing' %}bg-info text-dark{% elif order.status == 'ready' %}bg-success text-white{% elif order.status == 'served' %}bg-secondary text-light{% elif order.status == 'completed' %}bg-primary{% else %}bg-secondary{% endif %}">
                     {{ order.get_status_display }}
                 </span>
+                {% if order.status == 'ready' %}
+                <span class="badge bg-success-subtle text-success border border-success small animate-pulse">
+                    <i class="fa-solid fa-bell-concierge me-1"></i>Ready to Serve!
+                </span>
+                {% endif %}
             </div>
             <div class="text-muted small mt-1">
-                <span><i class="fa-solid fa-chair me-1"></i><strong>{{ order.table.name|default:'No Table' }}</strong></span>
+                <span><i class="fa-solid fa-chair me-1"></i><strong>{{ order.table.name|default:'Takeaway' }}</strong></span>
                 {% if order.waiter %}
                     <span class="ms-2"><i class="fa-solid fa-user-tie me-1"></i>{{ order.waiter.username }}</span>
                 {% endif %}
@@ -33,67 +38,121 @@
                         <div class="cart-item-row p-2 rounded bg-dark bg-opacity-25 border border-secondary-subtle">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div class="flex-grow-1 me-2">
-                                    <div class="fw-semibold text-white">{{ item.menu_item.name }}</div>
+                                    <div class="fw-semibold text-white d-flex align-items-center gap-2 flex-wrap">
+                                        <span>{{ item.menu_item.name }}</span>
+                                        
+                                        <!-- Live Item Status Badge -->
+                                        {% if item.status == 'pending' %}
+                                            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning-subtle smaller py-0 px-2">
+                                                <i class="fa-regular fa-clock me-1"></i>Pending
+                                            </span>
+                                        {% elif item.status == 'preparing' %}
+                                            <span class="badge bg-info bg-opacity-25 text-info border border-info-subtle smaller py-0 px-2">
+                                                <i class="fa-solid fa-fire me-1"></i>Preparing
+                                            </span>
+                                        {% elif item.status == 'ready' %}
+                                            <span class="badge bg-success text-white smaller py-0 px-2">
+                                                <i class="fa-solid fa-check-double me-1"></i>Ready
+                                            </span>
+                                        {% elif item.status == 'served' %}
+                                            <span class="badge bg-secondary-subtle text-light border border-secondary smaller py-0 px-2">
+                                                <i class="fa-solid fa-check me-1"></i>Served
+                                            </span>
+                                        {% endif %}
+                                    </div>
                                     <div class="text-muted small">
                                         {{ setting.currency|default:'PKR' }} {{ item.unit_price }} &times; {{ item.quantity }}
                                     </div>
                                 </div>
                                 <div class="fw-bold text-warning text-end">
-                                    {{ setting.currency|default:'PKR' }} {{ item.quantity|floatformat:0|default:1|floatformat:0 }}
-                                    <span class="d-none">hidden</span>
                                     {% widthratio item.unit_price 1 item.quantity as item_line_total %}
                                     <span class="text-white">{{ setting.currency|default:'PKR' }} {{ item_line_total }}</span>
                                 </div>
                             </div>
 
-                            <!-- Controls: Quantity +/- and Remove -->
+                            <!-- Controls: Quantity +/- and Remove OR Waiter Serve Button -->
                             <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary border-opacity-25">
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" 
-                                            class="btn btn-outline-light btn-qty"
-                                            hx-post="{% url 'order_update_item' order.id item.id %}"
-                                            hx-vals='{"delta": -1}'
-                                            hx-target="#order-cart"
-                                            hx-swap="innerHTML"
-                                            title="Decrease quantity">
-                                        <i class="fa-solid fa-minus"></i>
-                                    </button>
-                                    <span class="btn btn-outline-light disabled text-white fw-bold px-3">
-                                        {{ item.quantity }}
-                                    </span>
-                                    <button type="button" 
-                                            class="btn btn-outline-light btn-qty"
-                                            hx-post="{% url 'order_update_item' order.id item.id %}"
-                                            hx-vals='{"delta": 1}'
-                                            hx-target="#order-cart"
-                                            hx-swap="innerHTML"
-                                            title="Increase quantity">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
-                                </div>
+                                {% if item.status == 'pending' and order.status == 'pending' %}
+                                    <!-- Pending Item Controls -->
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-light btn-qty"
+                                                hx-post="{% url 'order_update_item' order.id item.id %}"
+                                                hx-vals='{"delta": -1}'
+                                                hx-target="#order-cart"
+                                                hx-swap="innerHTML"
+                                                title="Decrease quantity">
+                                            <i class="fa-solid fa-minus"></i>
+                                        </button>
+                                        <span class="btn btn-outline-light disabled text-white fw-bold px-3">
+                                            {{ item.quantity }}
+                                        </span>
+                                        <button type="button" 
+                                                class="btn btn-outline-light btn-qty"
+                                                hx-post="{% url 'order_update_item' order.id item.id %}"
+                                                hx-vals='{"delta": 1}'
+                                                hx-target="#order-cart"
+                                                hx-swap="innerHTML"
+                                                title="Increase quantity">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                    </div>
 
-                                <div class="d-flex align-items-center gap-2">
-                                    <!-- Toggle Note Input -->
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-secondary"
-                                            onclick="toggleNoteInput({{ item.id }})" 
-                                            title="Add special instructions">
-                                        <i class="fa-regular fa-comment-dots {% if item.note %}text-warning{% endif %}"></i>
-                                    </button>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <!-- Toggle Note Input -->
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-secondary"
+                                                onclick="toggleNoteInput({{ item.id }})" 
+                                                title="Add special instructions">
+                                            <i class="fa-regular fa-comment-dots {% if item.note %}text-warning{% endif %}"></i>
+                                        </button>
 
-                                    <!-- Remove Item -->
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-danger"
-                                            hx-post="{% url 'order_remove_item' order.id item.id %}"
-                                            hx-target="#order-cart"
-                                            hx-swap="innerHTML"
-                                            title="Remove item">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
+                                        <!-- Remove Item -->
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger"
+                                                hx-post="{% url 'order_remove_item' order.id item.id %}"
+                                                hx-target="#order-cart"
+                                                hx-swap="innerHTML"
+                                                title="Remove item">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <!-- Sent / In-Kitchen Item Info -->
+                                    <div class="small text-muted">
+                                        Qty: <strong class="text-white">{{ item.quantity }}</strong>
+                                        {% if item.note %}
+                                            <span class="ms-2 text-warning fst-italic"><i class="fa-regular fa-comment-dots me-1"></i>{{ item.note }}</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <div>
+                                        {% if item.status == 'ready' %}
+                                            <!-- One-Click Button: Waiter Marks Ready Item as Served -->
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-success fw-bold px-3"
+                                                    hx-post="{% url 'kitchen_item_status' item.id %}"
+                                                    hx-vals='{"status": "served", "source": "order"}'
+                                                    hx-target="#order-cart"
+                                                    hx-swap="innerHTML"
+                                                    title="Mark this item as served to customer">
+                                                <i class="fa-solid fa-utensils me-1"></i> Mark Served
+                                            </button>
+                                        {% elif item.status == 'served' %}
+                                            <span class="badge bg-secondary-subtle text-light border border-secondary">
+                                                <i class="fa-solid fa-check me-1"></i>Served
+                                            </span>
+                                        {% elif item.status == 'preparing' %}
+                                            <span class="badge bg-info bg-opacity-25 text-info border border-info-subtle">
+                                                <i class="fa-solid fa-spinner fa-spin me-1"></i>In Kitchen
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
                             </div>
 
-                            <!-- Note Input row (Collapsible / inline) -->
+                            <!-- Note Input row (Collapsible / inline for pending items) -->
+                            {% if item.status == 'pending' and order.status == 'pending' %}
                             <div id="note-wrapper-{{ item.id }}" class="mt-2 {% if not item.note %}d-none{% endif %}">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-dark border-secondary text-muted"><i class="fa-solid fa-pen"></i></span>
@@ -108,6 +167,7 @@
                                            hx-swap="innerHTML">
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                         {% endif %}
                     {% endfor %}
@@ -154,6 +214,7 @@
                 </button>
             </form>
 
+            {% if order.status == 'pending' %}
             <form method="post" action="{% url 'order_send' order.id %}" class="w-50">
                 {% csrf_token %}
                 <button type="submit" 
@@ -162,6 +223,13 @@
                     <i class="fa-solid fa-paper-plane me-1"></i> Send to Kitchen
                 </button>
             </form>
+            {% else %}
+            <div class="w-50">
+                <a href="{% url 'tables' %}" class="btn btn-outline-success w-100 py-2 fw-bold">
+                    <i class="fa-solid fa-chair me-1"></i> Return to Tables
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -47,16 +47,19 @@ class Command(BaseCommand):
         created_users = {}
         for username, password, role_name, is_super in users_data:
             user = User.objects.filter(username=username).first()
+            created = False
             if not user:
-                if is_super:
-                    user = User.objects.create_superuser(username=username, email="", password=password)
-                else:
-                    user = User.objects.create_user(username=username, email="", password=password)
+                user = User(username=username, email="")
+                created = True
             user.set_password(password)
+            user.is_active = True
+            user.is_staff = is_super
+            user.is_superuser = is_super
             user.save()
-            user.groups.add(group_objs[role_name])
+            user.groups.set([group_objs[role_name]])
             created_users[role_name] = user
-            self.stdout.write(self.style.SUCCESS(f"  - Created user: {username} ({role_name})"))
+            action_text = "Created" if created else "Updated"
+            self.stdout.write(self.style.SUCCESS(f"  - {action_text} user: {username} ({role_name})"))
 
         # 4. Tables (12 tables)
         tables_data = [

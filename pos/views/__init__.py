@@ -1,9 +1,16 @@
 from .auth import login_view, logout_view, home_redirect
-from .placeholder import dashboard_view, kitchen_view, billing_view
+from .placeholder import dashboard_view, billing_view
 from .tables import tables_view
+from .kitchen import (
+    kitchen_board_view,
+    kitchen_partial_view,
+    kitchen_item_status_view,
+    kitchen_order_batch_status_view,
+)
 from .orders import (
     order_create_view,
     order_detail_view,
+    order_cart_view,
     order_add_item_view,
     order_update_item_view,
     order_remove_item_view,

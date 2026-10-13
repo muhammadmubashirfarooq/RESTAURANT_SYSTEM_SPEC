@@ -79,6 +79,15 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+import sys
+if "test" in sys.argv:
+    import atexit
+    import shutil
+    import tempfile
+    _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="test_media_")
+    MEDIA_ROOT = Path(_TEST_MEDIA_ROOT)
+    atexit.register(lambda: shutil.rmtree(_TEST_MEDIA_ROOT, ignore_errors=True))
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_URL = "login"
