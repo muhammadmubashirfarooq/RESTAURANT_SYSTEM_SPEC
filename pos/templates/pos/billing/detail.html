@@ -1,0 +1,441 @@
+{% extends 'pos/base.html' %}
+{% load static %}
+
+{% block title %}Settle Bill #{{ order.pk }} &bull; {{ order.table.name|default:'Takeaway' }} | Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <!-- Top breadcrumb / navigation -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-50">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'billing' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to Billing List
+            </a>
+            <h4 class="fw-bold text-white mb-0">
+                Order <span class="text-warning">#{{ order.pk }}</span>
+            </h4>
+            {% if order.status == 'completed' %}
+                <span class="badge bg-success px-3 py-2 fs-7"><i class="fa-solid fa-circle-check me-1"></i> Completed &amp; Paid</span>
+            {% elif order.status == 'cancelled' %}
+                <span class="badge bg-danger px-3 py-2 fs-7"><i class="fa-solid fa-ban me-1"></i> Cancelled</span>
+            {% else %}
+                <span class="badge bg-warning text-dark px-3 py-2 fs-7 fw-bold"><i class="fa-solid fa-hourglass-half me-1"></i> Pending Payment</span>
+            {% endif %}
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+            {% if order.table %}
+                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger-subtle px-3 py-2 fs-7 fw-bold">
+                    <i class="fa-solid fa-chair me-1"></i> Table: {{ order.table.name }} (Cap: {{ order.table.capacity }})
+                </span>
+            {% else %}
+                <span class="badge bg-info bg-opacity-25 text-info border border-info-subtle px-3 py-2 fs-7">
+                    <i class="fa-solid fa-bag-shopping me-1"></i> {{ order.get_order_type_display }}
+                </span>
+            {% endif %}
+            <span class="badge bg-dark border border-secondary text-light px-3 py-2 fs-7">
+                <i class="fa-regular fa-clock me-1"></i> {{ order.created_at|date:"M d, h:i A" }}
+            </span>
+            <a href="{% url 'billing_receipt_pdf' order.pk %}" target="_blank" class="btn btn-outline-warning btn-sm rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-file-pdf me-1"></i> Download PDF Receipt
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Alerts if completed or cancelled -->
+    {% if order.status == 'completed' %}
+    <div class="alert alert-success border-0 shadow-sm d-flex align-items-center justify-content-between p-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa-solid fa-circle-check fs-2 text-success"></i>
+            <div>
+                <h5 class="fw-bold mb-0">Order Completed &amp; Settled!</h5>
+                <span class="small opacity-75">
+                    Closed at {{ order.closed_at|date:"h:i A on M d, Y" }}. Dining table is freed and available for new guests.
+                </span>
+            </div>
+        </div>
+        <a href="{% url 'billing_receipt_pdf' order.pk %}" target="_blank" class="btn btn-light fw-bold rounded-pill px-4 shadow-sm">
+            <i class="fa-solid fa-print me-1 text-danger"></i> Print Receipt
+        </a>
+    </div>
+    {% elif order.status == 'cancelled' %}
+    <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center gap-3 p-3 mb-4">
+        <i class="fa-solid fa-triangle-exclamation fs-2"></i>
+        <div>
+            <h5 class="fw-bold mb-0">Order Has Been Cancelled</h5>
+            <span class="small opacity-75">This order is cancelled and payments cannot be accepted.</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- LEFT COLUMN: Itemized Bill / Ordered Items -->
+        <div class="col-lg-7">
+            <div class="card glass-card border-0 shadow-sm h-100">
+                <div class="card-header bg-dark bg-opacity-50 border-secondary border-opacity-50 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-list-check me-2 text-warning"></i> Order Items
+                    </h5>
+                    <span class="badge bg-secondary">{{ items.count }} Ordered Items</span>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle mb-0">
+                            <thead class="text-muted small text-uppercase border-secondary border-opacity-50">
+                                <tr>
+                                    <th class="ps-4">Item</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Line Total</th>
+                                    <th class="text-center pe-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-white">{{ item.menu_item.name }}</div>
+                                        {% if item.note %}
+                                            <div class="text-warning small fst-italic"><i class="fa-regular fa-comment-dots me-1"></i>{{ item.note }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold text-white fs-6">
+                                        {{ item.quantity }}
+                                    </td>
+                                    <td class="text-end text-muted">
+                                        {{ setting.currency|default:'PKR' }} {{ item.unit_price|floatformat:2 }}
+                                    </td>
+                                    <td class="text-end fw-bold text-white fs-6">
+                                        {{ setting.currency|default:'PKR' }} {{ item.quantity|floatformat:0 }} &times; {{ item.unit_price|floatformat:2 }} =
+                                        <span class="text-warning">{{ setting.currency|default:'PKR' }} {% widthratio item.quantity 1 item.unit_price as line_total %}{{ line_total|default:item.unit_price|floatformat:2 }}</span>
+                                    </td>
+                                    <td class="text-center pe-4">
+                                        {% if item.status == 'ready' %}
+                                            <span class="badge bg-success small">Ready</span>
+                                        {% elif item.status == 'served' %}
+                                            <span class="badge bg-success bg-opacity-75 small">Served</span>
+                                        {% elif item.status == 'preparing' %}
+                                            <span class="badge bg-info small">In Kitchen</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary small">{{ item.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">No items in this order.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Split Payments History Table -->
+                <div class="card-footer bg-dark bg-opacity-25 border-top border-secondary border-opacity-50 p-3">
+                    <h6 class="fw-bold text-white mb-2 d-flex justify-content-between align-items-center">
+                        <span><i class="fa-solid fa-receipt me-2 text-info"></i> Recorded Payments History</span>
+                        <span class="badge bg-secondary">{{ payments.count }} Payment{{ payments.count|pluralize }}</span>
+                    </h6>
+                    {% if payments %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-sm align-middle mb-0 small">
+                            <thead class="text-muted border-secondary border-opacity-50">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Method</th>
+                                    <th>Amount</th>
+                                    <th>Cashier</th>
+                                    <th>Reference</th>
+                                    <th class="text-end">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td class="fw-semibold text-warning">P-{{ payment.pk }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ payment.get_method_display }}</span>
+                                    </td>
+                                    <td class="fw-bold text-success">
+                                        {{ setting.currency|default:'PKR' }} {{ payment.amount|floatformat:2 }}
+                                    </td>
+                                    <td class="text-light">{{ payment.cashier.username|default:'Staff' }}</td>
+                                    <td class="text-muted">{{ payment.reference|default:'-' }}</td>
+                                    <td class="text-end text-muted">{{ payment.paid_at|date:"h:i:s A" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0"><i class="fa-solid fa-info-circle me-1"></i> No payments recorded yet for this order.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Financial Summary & Payment Processor -->
+        <div class="col-lg-5">
+            <!-- Totals & Discount Card -->
+            <div class="card glass-card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark bg-opacity-50 border-secondary border-opacity-50 py-3">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-calculator me-2 text-warning"></i> Bill Summary
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Subtotal -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Items Subtotal:</span>
+                        <span class="fw-semibold text-white fs-6">{{ setting.currency|default:'PKR' }} {{ order.subtotal|floatformat:2 }}</span>
+                    </div>
+
+                    <!-- Discount Section -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <span class="text-muted">Discount Applied:</span>
+                            {% if order.discount > 0 %}
+                                <span class="badge bg-danger ms-1">Active</span>
+                            {% endif %}
+                        </div>
+                        <span class="fw-semibold text-danger fs-6">- {{ setting.currency|default:'PKR' }} {{ order.discount|floatformat:2 }}</span>
+                    </div>
+
+                    <!-- Apply / Edit Discount Form -->
+                    {% if order.status != 'completed' and order.status != 'cancelled' %}
+                    <form method="post" action="{% url 'billing_discount' order.pk %}" class="my-3 p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-50">
+                        {% csrf_token %}
+                        <label class="form-label small text-muted fw-semibold mb-1">
+                            Adjust Order Discount (cannot exceed subtotal {{ setting.currency|default:'PKR' }} {{ order.subtotal|floatformat:2 }})
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-muted">{{ setting.currency|default:'PKR' }}</span>
+                            <input type="number" 
+                                   name="discount" 
+                                   id="discountInput"
+                                   step="0.01" 
+                                   min="0.00" 
+                                   max="{{ order.subtotal }}"
+                                   value="{{ order.discount|floatformat:2 }}" 
+                                   class="form-control bg-dark text-white border-secondary" 
+                                   placeholder="0.00" 
+                                   required>
+                            <button type="submit" class="btn btn-outline-warning">
+                                <i class="fa-solid fa-check me-1"></i> Apply
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+
+                    <!-- Tax -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Tax ({{ order.tax_rate }}%):</span>
+                        <span class="fw-semibold text-white fs-6">+ {{ setting.currency|default:'PKR' }} {{ order.tax|floatformat:2 }}</span>
+                    </div>
+
+                    <hr class="border-secondary border-opacity-50 my-3">
+
+                    <!-- Grand Total -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="fw-bold text-white fs-5">Grand Total:</span>
+                        <span class="fw-bold text-warning fs-3">{{ setting.currency|default:'PKR' }} {{ order.total|floatformat:2 }}</span>
+                    </div>
+
+                    <!-- Paid So Far & Remaining Balance Highlight -->
+                    <div class="p-3 rounded bg-dark bg-opacity-75 border border-secondary border-opacity-50 mb-0">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Amount Paid So Far:</span>
+                            <span class="fw-bold text-success fs-6">{{ setting.currency|default:'PKR' }} {{ order.paid_amount|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-white">Balance Due / Remaining:</span>
+                            <span class="fw-bold fs-4 {% if order.remaining_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ setting.currency|default:'PKR' }} {{ order.remaining_balance|floatformat:2 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Terminal Card -->
+            {% if order.status != 'completed' and order.status != 'cancelled' %}
+            <div class="card glass-card border-0 shadow-sm">
+                <div class="card-header bg-dark bg-opacity-50 border-secondary border-opacity-50 py-3">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-credit-card me-2 text-warning"></i> Accept Payment
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" action="{% url 'billing_pay' order.pk %}" id="paymentForm">
+                        {% csrf_token %}
+
+                        <!-- Payment Method Selector Tabs -->
+                        <label class="form-label text-muted small fw-semibold mb-2">Select Payment Method</label>
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="method" id="methodCash" value="cash" checked autocomplete="off">
+                                <label class="btn btn-outline-warning w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="methodCash">
+                                    <i class="fa-solid fa-money-bill-wave fs-5 mb-1"></i>
+                                    <span class="small fw-bold">Cash</span>
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="method" id="methodCard" value="card" autocomplete="off">
+                                <label class="btn btn-outline-info w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="methodCard">
+                                    <i class="fa-solid fa-credit-card fs-5 mb-1"></i>
+                                    <span class="small fw-bold">Card</span>
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="method" id="methodOnline" value="online" autocomplete="off">
+                                <label class="btn btn-outline-success w-100 py-2 d-flex flex-column align-items-center justify-content-center" for="methodOnline">
+                                    <i class="fa-solid fa-mobile-screen fs-5 mb-1"></i>
+                                    <span class="small fw-bold">Online</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Amount to Apply to Bill -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label text-muted small fw-semibold mb-0">Payment Amount</label>
+                                <button type="button" class="btn btn-link btn-sm text-warning p-0 text-decoration-none" id="btnPayFullRemaining">
+                                    Pay Exact Due ({{ setting.currency|default:'PKR' }} {{ order.remaining_balance|floatformat:2 }})
+                                </button>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-muted">{{ setting.currency|default:'PKR' }}</span>
+                                <input type="number" 
+                                       name="amount" 
+                                       id="paymentAmountInput"
+                                       step="0.01" 
+                                       min="0.01" 
+                                       max="{{ order.remaining_balance }}" 
+                                       value="{{ order.remaining_balance|floatformat:2 }}" 
+                                       class="form-control form-control-lg bg-dark text-white border-secondary fw-bold" 
+                                       placeholder="0.00" 
+                                       required>
+                            </div>
+                            <div class="form-text fs-8 text-muted">Supports split payments. Enter any partial amount &gt; 0.</div>
+                        </div>
+
+                        <!-- Cash Tendered & Live Change Calculator -->
+                        <div id="cashTenderedGroup" class="p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-50 mb-3">
+                            <label class="form-label text-muted small fw-semibold mb-1">
+                                Cash Received from Customer (Optional)
+                            </label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-dark border-secondary text-muted">{{ setting.currency|default:'PKR' }}</span>
+                                <input type="number" 
+                                       name="tendered" 
+                                       id="tenderedInput"
+                                       step="0.01" 
+                                       min="0.00" 
+                                       class="form-control bg-dark text-white border-secondary fw-bold" 
+                                       placeholder="e.g. 1000, 5000">
+                            </div>
+
+                            <!-- Live Change Due Box -->
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-50">
+                                <span class="fw-bold text-white small">Change Due:</span>
+                                <span class="fw-bold fs-5 text-warning" id="liveChangeDueDisplay">{{ setting.currency|default:'PKR' }} 0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Reference (for Card/Online) -->
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-semibold mb-1">Payment Reference / Notes (Optional)</label>
+                            <input type="text" 
+                                   name="reference" 
+                                   class="form-control bg-dark text-white border-secondary" 
+                                   placeholder="e.g. Auth Code 8492, EasyPaisa Txn #">
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-warning w-100 py-3 fw-bold fs-6 rounded-pill shadow">
+                            <i class="fa-solid fa-check-double me-2"></i> Record &amp; Process Payment
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <!-- Receipt Actions for Completed Order -->
+            <div class="card glass-card border-0 shadow-sm text-center p-4">
+                <i class="fa-solid fa-receipt fs-1 text-warning mb-3"></i>
+                <h5 class="fw-bold text-white">Receipt Ready</h5>
+                <p class="text-muted small">This order has been settled. You can download or print the official customer receipt.</p>
+                <div class="d-flex flex-column gap-2">
+                    <a href="{% url 'billing_receipt_pdf' order.pk %}" target="_blank" class="btn btn-primary-custom rounded-pill py-2 fw-bold">
+                        <i class="fa-solid fa-file-pdf me-2"></i> Download PDF Receipt
+                    </a>
+                    <a href="{% url 'billing' %}" class="btn btn-outline-secondary rounded-pill py-2">
+                        <i class="fa-solid fa-list me-2"></i> View Open Orders List
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Live Change Due Calculator
+    const paymentAmountInput = document.getElementById('paymentAmountInput');
+    const tenderedInput = document.getElementById('tenderedInput');
+    const liveChangeDueDisplay = document.getElementById('liveChangeDueDisplay');
+    const btnPayFullRemaining = document.getElementById('btnPayFullRemaining');
+    const fullRemainingVal = "{{ order.remaining_balance|floatformat:2 }}";
+    const currency = "{{ setting.currency|default:'PKR' }}";
+
+    function updateChangeDue() {
+        if (!paymentAmountInput || !tenderedInput || !liveChangeDueDisplay) return;
+
+        const amountToPay = parseFloat(paymentAmountInput.value) || 0;
+        const tendered = parseFloat(tenderedInput.value) || 0;
+
+        if (tendered > amountToPay) {
+            const change = (tendered - amountToPay).toFixed(2);
+            liveChangeDueDisplay.innerText = `${currency} ${change}`;
+            liveChangeDueDisplay.className = "fw-bold fs-5 text-success";
+        } else {
+            liveChangeDueDisplay.innerText = `${currency} 0.00`;
+            liveChangeDueDisplay.className = "fw-bold fs-5 text-warning";
+        }
+    }
+
+    if (paymentAmountInput) {
+        paymentAmountInput.addEventListener('input', updateChangeDue);
+    }
+    if (tenderedInput) {
+        tenderedInput.addEventListener('input', updateChangeDue);
+    }
+    if (btnPayFullRemaining) {
+        btnPayFullRemaining.addEventListener('click', () => {
+            if (paymentAmountInput) {
+                paymentAmountInput.value = fullRemainingVal;
+                updateChangeDue();
+            }
+        });
+    }
+
+    // Toggle cash tendered field based on method
+    const methodRadios = document.querySelectorAll('input[name="method"]');
+    const cashTenderedGroup = document.getElementById('cashTenderedGroup');
+
+    methodRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'cash' && cashTenderedGroup) {
+                cashTenderedGroup.classList.remove('d-none');
+            } else if (cashTenderedGroup) {
+                cashTenderedGroup.classList.add('d-none');
+                if (tenderedInput) tenderedInput.value = '';
+                updateChangeDue();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Receipt #{{ order.pk }} - {{ setting.restaurant_name|default:'Spice & Flavor Restaurant' }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 1.5cm 2cm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 8pt;
+                color: #777777;
+            }
+        }
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            color: #222222;
+            font-size: 10pt;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-left { text-align: left; }
+        .bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+        .muted { color: #666666; font-size: 9pt; }
+
+        .restaurant-header {
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px dashed #999999;
+        }
+        .restaurant-title {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #d9531e;
+            margin: 0 0 4px 0;
+        }
+        .restaurant-meta {
+            font-size: 9.5pt;
+            color: #444444;
+            margin: 2px 0;
+        }
+
+        .meta-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border-collapse: collapse;
+        }
+        .meta-table td {
+            padding: 3px 0;
+            font-size: 9.5pt;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .items-table th {
+            border-top: 1.5px solid #222222;
+            border-bottom: 1.5px solid #222222;
+            padding: 6px 4px;
+            font-size: 9.5pt;
+            font-weight: bold;
+            background-color: #f7f7f7;
+        }
+        .items-table td {
+            padding: 6px 4px;
+            border-bottom: 0.5px solid #e0e0e0;
+            font-size: 9.5pt;
+        }
+
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            margin-bottom: 15px;
+        }
+        .totals-table td {
+            padding: 4px 0;
+            font-size: 10pt;
+        }
+        .grand-total-row td {
+            border-top: 1.5px solid #222222;
+            border-bottom: 1.5px solid #222222;
+            font-size: 13pt;
+            font-weight: bold;
+            color: #111111;
+            padding: 8px 0;
+        }
+
+        .payments-box {
+            background-color: #fafafa;
+            border: 1px dashed #cccccc;
+            padding: 8px 12px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+        .payments-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .payments-table td {
+            padding: 3px 0;
+            font-size: 9pt;
+        }
+
+        .receipt-footer {
+            margin-top: 25px;
+            padding-top: 12px;
+            border-top: 1px dashed #aaaaaa;
+            text-align: center;
+            font-size: 9pt;
+            color: #555555;
+        }
+        .barcode-placeholder {
+            letter-spacing: 5px;
+            font-family: Courier, monospace;
+            font-size: 12pt;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header with Restaurant Branding -->
+    <div class="restaurant-header text-center">
+        <div class="restaurant-title">{{ setting.restaurant_name|default:'Spice & Flavor Restaurant' }}</div>
+        {% if setting.address %}
+            <div class="restaurant-meta">{{ setting.address }}</div>
+        {% endif %}
+        {% if setting.phone %}
+            <div class="restaurant-meta">Phone: {{ setting.phone }}</div>
+        {% endif %}
+        <div class="muted" style="margin-top: 4px;">*** OFFICIAL CUSTOMER RECEIPT ***</div>
+    </div>
+
+    <!-- Order Metadata -->
+    <table class="meta-table">
+        <tr>
+            <td class="text-left" style="width: 50%;">
+                <strong>Order No:</strong> #{{ order.pk }}
+            </td>
+            <td class="text-right" style="width: 50%;">
+                <strong>Date:</strong> {{ order.created_at|date:"M d, Y" }}
+            </td>
+        </tr>
+        <tr>
+            <td class="text-left">
+                <strong>Table:</strong> {{ order.table.name|default:'Takeaway' }} ({{ order.get_order_type_display }})
+            </td>
+            <td class="text-right">
+                <strong>Time:</strong> {{ order.created_at|date:"h:i A" }}
+            </td>
+        </tr>
+        <tr>
+            <td class="text-left">
+                <strong>Waiter:</strong> {{ order.waiter.username|default:'Staff' }}
+            </td>
+            <td class="text-right">
+                <strong>Status:</strong> <span class="uppercase bold">{{ order.get_status_display }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Itemized List -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="text-left" style="width: 50%;">Item Description</th>
+                <th class="text-center" style="width: 12%;">Qty</th>
+                <th class="text-right" style="width: 18%;">Price ({{ setting.currency|default:'PKR' }})</th>
+                <th class="text-right" style="width: 20%;">Total ({{ setting.currency|default:'PKR' }})</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="text-left">
+                    <span class="bold">{{ item.menu_item.name }}</span>
+                    {% if item.note %}
+                        <br><span class="muted">Note: {{ item.note }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-center bold">{{ item.quantity }}</td>
+                <td class="text-right">{{ item.unit_price|floatformat:2 }}</td>
+                <td class="text-right bold">{% widthratio item.quantity 1 item.unit_price as line_total %}{{ line_total|default:item.unit_price|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Totals & Taxes Breakdown -->
+    <table class="totals-table">
+        <tr>
+            <td class="text-left" style="width: 60%;">Subtotal:</td>
+            <td class="text-right bold" style="width: 40%;">{{ setting.currency|default:'PKR' }} {{ order.subtotal|floatformat:2 }}</td>
+        </tr>
+        {% if order.discount > 0 %}
+        <tr>
+            <td class="text-left" style="color: #c0392b;">Discount:</td>
+            <td class="text-right bold" style="color: #c0392b;">- {{ setting.currency|default:'PKR' }} {{ order.discount|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        {% if order.tax_rate > 0 %}
+        <tr>
+            <td class="text-left">Tax ({{ order.tax_rate }}%):</td>
+            <td class="text-right bold">+ {{ setting.currency|default:'PKR' }} {{ order.tax|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        <tr class="grand-total-row">
+            <td class="text-left">TOTAL:</td>
+            <td class="text-right">{{ setting.currency|default:'PKR' }} {{ order.total|floatformat:2 }}</td>
+        </tr>
+    </table>
+
+    <!-- Payment Records Breakdown -->
+    <div class="payments-box">
+        <div class="bold" style="font-size: 9.5pt; margin-bottom: 4px;">Payment Summary:</div>
+        <table class="payments-table">
+            {% for p in payments %}
+            <tr>
+                <td class="text-left">
+                    &bull; {{ p.get_method_display }} 
+                    {% if p.reference %}(Ref: {{ p.reference }}){% endif %}
+                    <span class="muted">by {{ p.cashier.username|default:'Cashier' }} at {{ p.paid_at|date:"h:i A" }}</span>
+                </td>
+                <td class="text-right bold">{{ setting.currency|default:'PKR' }} {{ p.amount|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" class="muted">Unpaid / Payment Pending</td>
+            </tr>
+            {% endfor %}
+            <tr style="border-top: 1px solid #ddd; font-weight: bold;">
+                <td class="text-left" style="padding-top: 4px;">Total Paid:</td>
+                <td class="text-right" style="padding-top: 4px;">{{ setting.currency|default:'PKR' }} {{ order.paid_amount|floatformat:2 }}</td>
+            </tr>
+            {% if order.remaining_balance > 0 %}
+            <tr style="color: #c0392b; font-weight: bold;">
+                <td class="text-left">Remaining Balance:</td>
+                <td class="text-right">{{ setting.currency|default:'PKR' }} {{ order.remaining_balance|floatformat:2 }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <!-- Thank you footer -->
+    <div class="receipt-footer">
+        <div><strong>Thank you for dining with us!</strong></div>
+        <div class="muted">Please visit us again soon.</div>
+        <div class="barcode-placeholder">*ORD-{{ order.pk }}-{{ order.created_at|date:"Ymd" }}*</div>
+        {% if order.closed_at %}
+            <div class="muted" style="margin-top: 5px;">Settled on {{ order.closed_at|date:"Y-m-d H:i:s" }}</div>
+        {% endif %}
+    </div>
+
+</body>
+</html>

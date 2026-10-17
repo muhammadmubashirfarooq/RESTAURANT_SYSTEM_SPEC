@@ -1,5 +1,13 @@
 from .auth import login_view, logout_view, home_redirect
-from .placeholder import dashboard_view, billing_view
+from .placeholder import dashboard_view
+from .billing import (
+    billing_list_view,
+    billing_detail_view,
+    billing_discount_view,
+    billing_pay_view,
+    billing_receipt_pdf_view,
+)
+billing_view = billing_list_view
 from .tables import tables_view
 from .kitchen import (
     kitchen_board_view,

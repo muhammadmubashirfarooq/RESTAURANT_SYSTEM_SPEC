@@ -15,14 +15,3 @@ def dashboard_view(request):
         "total_menu_items": MenuItem.objects.count(),
     }
     return render(request, "pos/placeholder.html", context)
-
-
-
-@role_required("Admin", "Manager", "Cashier")
-def billing_view(request):
-    context = {
-        "title": "Billing & Cashier List",
-        "role": get_user_role(request.user),
-        "ready_orders": Order.objects.filter(status__in=["ready", "served"]),
-    }
-    return render(request, "pos/placeholder.html", context)

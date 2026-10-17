@@ -77,23 +77,36 @@ class Order(models.Model):
         total = self.items.exclude(status="cancelled").aggregate(
             t=Sum(F("quantity") * F("unit_price"))
         )["t"]
-        return total or Decimal("0")
+        return (total or Decimal("0.00")).quantize(Decimal("0.01"))
 
     @property
     def tax(self):
-        return ((self.subtotal - self.discount) * self.tax_rate / Decimal("100")).quantize(Decimal("0.01"))
+        taxable = max(Decimal("0.00"), self.subtotal - self.discount)
+        return (taxable * self.tax_rate / Decimal("100")).quantize(Decimal("0.01"))
 
     @property
     def total(self):
-        return self.subtotal - self.discount + self.tax
+        calc_total = self.subtotal - self.discount + self.tax
+        return max(Decimal("0.00"), calc_total.quantize(Decimal("0.01")))
 
     @property
     def paid_amount(self):
-        return self.payments.aggregate(t=Sum("amount"))["t"] or Decimal("0")
+        total_paid = self.payments.aggregate(t=Sum("amount"))["t"]
+        return (total_paid or Decimal("0.00")).quantize(Decimal("0.01"))
+
+    @property
+    def remaining_balance(self):
+        return max(Decimal("0.00"), (self.total - self.paid_amount).quantize(Decimal("0.01")))
 
     @property
     def is_paid(self):
         return self.paid_amount >= self.total
+
+    @property
+    def has_in_progress_or_served_items(self):
+        return self.items.filter(
+            status__in=["preparing", "ready", "served"]
+        ).exists()
 
 
 class OrderItem(models.Model):

@@ -207,29 +207,62 @@
 
         <!-- Action Buttons -->
         <div class="d-flex gap-2 mt-3">
-            <form method="post" action="{% url 'order_cancel' order.id %}" class="w-50" onsubmit="return confirm('Are you sure you want to cancel Order #{{ order.id }}? This will release Table {{ order.table.name }}.');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger w-100 py-2 fw-semibold">
-                    <i class="fa-solid fa-xmark me-1"></i> Cancel Order
-                </button>
-            </form>
-
-            {% if order.status == 'pending' %}
-            <form method="post" action="{% url 'order_send' order.id %}" class="w-50">
-                {% csrf_token %}
-                <button type="submit" 
-                        class="btn btn-primary-custom w-100 py-2 fw-bold"
-                        {% if not order.items.exists %}disabled{% endif %}>
-                    <i class="fa-solid fa-paper-plane me-1"></i> Send to Kitchen
-                </button>
-            </form>
-            {% else %}
-            <div class="w-50">
-                <a href="{% url 'tables' %}" class="btn btn-outline-success w-100 py-2 fw-bold">
-                    <i class="fa-solid fa-chair me-1"></i> Return to Tables
+            {% if order.status == 'completed' %}
+                <a href="{% url 'billing_detail' order.id %}" class="btn btn-success w-100 py-2 fw-bold">
+                    <i class="fa-solid fa-receipt me-1"></i> View Settled Bill
                 </a>
-            </div>
+            {% else %}
+                {% if order.has_in_progress_or_served_items and user.groups.all.0.name == 'Waiter' %}
+                    <button type="button" class="btn btn-outline-secondary w-50 py-2 fw-semibold" disabled title="Only Manager or Admin can cancel orders with items in preparation or served.">
+                        <i class="fa-solid fa-lock me-1"></i> Manager Only
+                    </button>
+                {% else %}
+                    <form method="post" action="{% url 'order_cancel' order.id %}" class="w-50" onsubmit="return handleOrderCancel(event, {{ order.has_in_progress_or_served_items|yesno:'true,false' }});">
+                        {% csrf_token %}
+                        <input type="hidden" name="reason" value="">
+                        <button type="submit" class="btn btn-outline-danger w-100 py-2 fw-semibold">
+                            <i class="fa-solid fa-xmark me-1"></i> Cancel Order
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if order.status == 'pending' %}
+                <form method="post" action="{% url 'order_send' order.id %}" class="w-50">
+                    {% csrf_token %}
+                    <button type="submit" 
+                            class="btn btn-primary-custom w-100 py-2 fw-bold"
+                            {% if not order.items.exists %}disabled{% endif %}>
+                        <i class="fa-solid fa-paper-plane me-1"></i> Send to Kitchen
+                    </button>
+                </form>
+                {% else %}
+                <div class="w-50">
+                    <a href="{% url 'tables' %}" class="btn btn-outline-success w-100 py-2 fw-bold">
+                        <i class="fa-solid fa-chair me-1"></i> Return to Tables
+                    </a>
+                </div>
+                {% endif %}
             {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+    if (typeof handleOrderCancel === 'undefined') {
+        window.handleOrderCancel = function(event, requiresReason) {
+            if (requiresReason) {
+                const reason = prompt("Items are already preparing or served.\nManager / Admin authorization required.\nPlease enter cancellation reason:");
+                if (!reason || !reason.trim()) {
+                    alert("A cancellation reason is required.");
+                    event.preventDefault();
+                    return false;
+                }
+                event.target.querySelector('input[name="reason"]').value = reason.trim();
+                return true;
+            } else {
+                return confirm("Are you sure you want to cancel this order? This will release the table.");
+            }
+        };
+    }
+</script>
+

@@ -1,0 +1,282 @@
+{% extends 'pos/base.html' %}
+{% load static %}
+
+{% block title %}Billing Terminal &bull; Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <!-- Header with KPI Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card glass-card border-0 p-3 shadow-sm h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-semibold">Open Orders</span>
+                        <h2 class="fw-bold text-white mb-0 mt-1">{{ total_open_count }}</h2>
+                    </div>
+                    <div class="rounded-circle bg-primary bg-opacity-25 p-3 text-warning">
+                        <i class="fa-solid fa-receipt fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card glass-card border-0 p-3 shadow-sm h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-semibold">Ready / Served Orders</span>
+                        <h2 class="fw-bold text-success mb-0 mt-1">{{ ready_orders_count }}</h2>
+                    </div>
+                    <div class="rounded-circle bg-success bg-opacity-25 p-3 text-success">
+                        <i class="fa-solid fa-bell-concierge fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card glass-card border-0 p-3 shadow-sm h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-semibold">Total Open Value</span>
+                        <h2 class="fw-bold text-warning mb-0 mt-1">{{ setting.currency|default:'PKR' }} {{ total_open_amount|floatformat:2 }}</h2>
+                    </div>
+                    <div class="rounded-circle bg-warning bg-opacity-25 p-3 text-warning">
+                        <i class="fa-solid fa-coins fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="card glass-card border-0 p-3 mb-4 shadow-sm">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="orderSearchInput" class="form-control bg-dark text-white border-secondary" placeholder="Search by Order #, Table, Waiter...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                    <button class="btn btn-sm btn-outline-warning active filter-tab-btn" data-filter="all">
+                        All Open ({{ total_open_count }})
+                    </button>
+                    <button class="btn btn-sm btn-outline-success filter-tab-btn" data-filter="ready_served">
+                        <i class="fa-solid fa-check-circle me-1"></i> Ready &amp; Served ({{ ready_orders_count }})
+                    </button>
+                    <button class="btn btn-sm btn-outline-info filter-tab-btn" data-filter="in_kitchen">
+                        <i class="fa-solid fa-fire me-1"></i> Kitchen / In-Progress
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Open Orders Table / Cards -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+        <div class="card-header bg-dark bg-opacity-50 border-secondary border-opacity-50 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-white mb-0">
+                <i class="fa-solid fa-cash-register me-2 text-warning"></i> Open Orders Awaiting Settlement
+            </h5>
+            <span class="badge bg-secondary">{{ total_open_count }} Active</span>
+        </div>
+
+        <div class="card-body p-0">
+            {% if open_orders %}
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0" id="billingOrdersTable">
+                    <thead class="text-muted small text-uppercase border-secondary border-opacity-50">
+                        <tr>
+                            <th class="ps-4">Order</th>
+                            <th>Table / Type</th>
+                            <th>Status</th>
+                            <th>Waiter</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Paid / Balance</th>
+                            <th class="text-end pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in open_orders %}
+                        <tr class="billing-order-row" 
+                            data-status="{{ order.status }}" 
+                            data-search="order #{{ order.pk }} {{ order.table.name|default:'takeaway' }} {{ order.waiter.username|default:'' }}">
+                            <td class="ps-4">
+                                <span class="fw-bold text-warning fs-6">#{{ order.pk }}</span>
+                                <div class="text-muted small">{{ order.created_at|date:"h:i A" }}</div>
+                            </td>
+                            <td>
+                                {% if order.table %}
+                                    <span class="badge bg-danger bg-opacity-25 text-danger border border-danger-subtle px-3 py-2 fs-7 fw-bold">
+                                        <i class="fa-solid fa-chair me-1"></i> {{ order.table.name }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-info bg-opacity-25 text-info border border-info-subtle px-3 py-2 fs-7">
+                                        <i class="fa-solid fa-bag-shopping me-1"></i> {{ order.get_order_type_display }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if order.status == 'ready' %}
+                                    <span class="badge bg-success px-3 py-2"><i class="fa-solid fa-bell me-1"></i> Ready</span>
+                                {% elif order.status == 'served' %}
+                                    <span class="badge bg-success bg-opacity-75 px-3 py-2"><i class="fa-solid fa-check-double me-1"></i> Served</span>
+                                {% elif order.status == 'preparing' %}
+                                    <span class="badge bg-info px-3 py-2"><i class="fa-solid fa-fire me-1"></i> Preparing</span>
+                                {% else %}
+                                    <span class="badge bg-secondary px-3 py-2">{{ order.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-light small"><i class="fa-regular fa-user me-1 text-muted"></i>{{ order.waiter.username|default:'Staff' }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-dark border border-secondary text-light">
+                                    {{ order.items.count }} item{{ order.items.count|pluralize }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-white fs-6">
+                                    {{ setting.currency|default:'PKR' }} {{ order.total|floatformat:2 }}
+                                </div>
+                                {% if order.discount > 0 %}
+                                    <div class="text-danger small fst-italic">-{{ setting.currency|default:'PKR' }} {{ order.discount|floatformat:2 }} discount</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if order.paid_amount > 0 %}
+                                    <div class="text-success small fw-semibold">Paid: {{ setting.currency|default:'PKR' }} {{ order.paid_amount|floatformat:2 }}</div>
+                                    <div class="text-warning fw-bold">Due: {{ setting.currency|default:'PKR' }} {{ order.remaining_balance|floatformat:2 }}</div>
+                                {% else %}
+                                    <span class="text-muted small">Unpaid</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'billing_detail' order.pk %}" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm">
+                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i> Settle Bill
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="fa-solid fa-mug-hot fs-1 mb-3 opacity-50 text-warning"></i>
+                <h5 class="text-white">All caught up!</h5>
+                <p class="mb-0">There are no open orders awaiting settlement right now.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Completed Orders Section (For reprints or auditing) -->
+    {% if recent_completed %}
+    <div class="card glass-card border-0 shadow-sm mt-4">
+        <div class="card-header bg-dark bg-opacity-25 border-secondary border-opacity-50 py-3 d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold text-white-50 mb-0">
+                <i class="fa-solid fa-clock-rotate-left me-2"></i> Recently Settled Orders
+            </h6>
+            <span class="badge bg-secondary-subtle text-muted">Latest {{ recent_completed|length }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-sm align-middle mb-0 opacity-75">
+                    <thead class="text-muted small border-secondary border-opacity-50">
+                        <tr>
+                            <th class="ps-4">Order</th>
+                            <th>Table</th>
+                            <th>Settled At</th>
+                            <th>Total</th>
+                            <th>Payments</th>
+                            <th class="text-end pe-4">Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_completed %}
+                        <tr>
+                            <td class="ps-4 fw-semibold text-warning">#{{ order.pk }}</td>
+                            <td>{{ order.table.name|default:'Takeaway' }}</td>
+                            <td class="small text-muted">{{ order.closed_at|date:"h:i A, M d" }}</td>
+                            <td class="fw-semibold">{{ setting.currency|default:'PKR' }} {{ order.total|floatformat:2 }}</td>
+                            <td>
+                                {% for p in order.payments.all %}
+                                    <span class="badge bg-secondary me-1">{{ p.get_method_display }}: {{ p.amount|floatformat:2 }}</span>
+                                {% empty %}
+                                    <span class="badge bg-success">Settled</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'billing_receipt_pdf' order.pk %}" target="_blank" class="btn btn-sm btn-outline-light rounded-pill px-3">
+                                    <i class="fa-solid fa-print me-1"></i> Print PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search and tab filter
+    const searchInput = document.getElementById('orderSearchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    const filterTabs = document.querySelectorAll('.filter-tab-btn');
+    const rows = document.querySelectorAll('.billing-order-row');
+    let currentFilter = 'all';
+
+    function filterRows() {
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        rows.forEach(row => {
+            const status = row.getAttribute('data-status');
+            const searchData = row.getAttribute('data-search').toLowerCase();
+
+            let matchesTab = true;
+            if (currentFilter === 'ready_served') {
+                matchesTab = (status === 'ready' || status === 'served');
+            } else if (currentFilter === 'in_kitchen') {
+                matchesTab = (status === 'pending' || status === 'preparing');
+            }
+
+            const matchesSearch = !query || searchData.includes(query);
+
+            if (matchesTab && matchesSearch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', filterRows);
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            filterRows();
+        });
+    }
+
+    filterTabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterTabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.getAttribute('data-filter');
+            filterRows();
+        });
+    });
+</script>
+{% endblock %}

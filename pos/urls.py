@@ -11,7 +11,11 @@ urlpatterns = [
     path("kitchen/partial/", views.kitchen_partial_view, name="kitchen_partial"),
     path("kitchen/item/<int:item_id>/status/", views.kitchen_item_status_view, name="kitchen_item_status"),
     path("kitchen/order/<int:order_id>/batch-status/", views.kitchen_order_batch_status_view, name="kitchen_order_batch_status"),
-    path("billing/", views.billing_view, name="billing"),
+    path("billing/", views.billing_list_view, name="billing"),
+    path("billing/<int:order_id>/", views.billing_detail_view, name="billing_detail"),
+    path("billing/<int:order_id>/discount/", views.billing_discount_view, name="billing_discount"),
+    path("billing/<int:order_id>/pay/", views.billing_pay_view, name="billing_pay"),
+    path("billing/<int:order_id>/receipt.pdf", views.billing_receipt_pdf_view, name="billing_receipt_pdf"),
 
     # Phase 3: Order Taking
     path("orders/new/<int:table_id>/", views.order_create_view, name="order_new"),

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from pos.permissions import role_required, get_user_role
@@ -159,12 +160,23 @@ def order_send_view(request, order_id):
 def order_cancel_view(request, order_id):
     """
     Cancels order and frees table (turns green).
+    Rules enforced:
+    - Completed (paid) orders cannot be cancelled.
+    - If any item is in preparing/ready/served, only Manager or Admin can cancel, and a reason must be provided.
     """
     order = get_object_or_404(Order, pk=order_id)
     if request.method == "POST":
-        table_name = order.table.name if order.table else "N/A"
-        services.cancel_order(order)
-        messages.warning(request, f"Order #{order.pk} cancelled. Table {table_name} is now free.")
-        return redirect("tables")
+        reason = request.POST.get("reason", "").strip()
+        try:
+            services.cancel_order(order, user=request.user, reason=reason)
+            table_name = order.table.name if order.table else "N/A"
+            messages.warning(request, f"Order #{order.pk} cancelled. Table {table_name} is now free.")
+            return redirect("tables")
+        except PermissionDenied as e:
+            messages.error(request, str(e))
+            return redirect("order_detail", order_id=order.pk)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect("order_detail", order_id=order.pk)
 
     return redirect("order_detail", order_id=order.pk)
