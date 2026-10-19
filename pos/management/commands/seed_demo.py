@@ -11,10 +11,17 @@ from pos.models import Category, MenuItem, DiningTable, Order, OrderItem, Paymen
 
 
 class Command(BaseCommand):
-    help = "Seed database with demo roles, users, categories, menu items, tables, and past orders."
+    help = "Seed database with demo roles, users, categories, menu items, tables, and past orders. Safe to run repeatedly."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--clear-all",
+            action="store_true",
+            help="Clear all existing orders before re-seeding.",
+        )
 
     @transaction.atomic
-    def handle(self, *args, **kwargs):
+    def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE("Starting demo seeding..."))
 
         # 1. Setting
@@ -61,7 +68,7 @@ class Command(BaseCommand):
             action_text = "Created" if created else "Updated"
             self.stdout.write(self.style.SUCCESS(f"  - {action_text} user: {username} ({role_name})"))
 
-        # 4. Tables (12 tables)
+        # 4. Tables (12 tables) - Reset to FREE on re-seed
         tables_data = [
             ("T1", 2), ("T2", 2), ("T3", 4), ("T4", 4),
             ("T5", 4), ("T6", 6), ("T7", 6), ("T8", 8),
@@ -70,8 +77,11 @@ class Command(BaseCommand):
         created_tables = []
         for name, cap in tables_data:
             t, _ = DiningTable.objects.get_or_create(name=name, defaults={"capacity": cap, "status": DiningTable.Status.FREE})
+            if t.status != DiningTable.Status.FREE:
+                t.status = DiningTable.Status.FREE
+                t.save(update_fields=["status"])
             created_tables.append(t)
-        self.stdout.write(self.style.SUCCESS(f"[OK] Created {len(created_tables)} dining tables."))
+        self.stdout.write(self.style.SUCCESS(f"[OK] Verified {len(created_tables)} dining tables (reset to FREE)."))
 
         # 5. Categories (6 categories)
         categories_data = [
@@ -146,6 +156,15 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"[OK] Created {len(all_menu_items)} menu items."))
 
         # 7. Past Orders (~40 orders spread over last 14 days)
+        # Safe to run repeatedly: clear previous demo orders so orders do not accumulate infinitely
+        if options.get("clear_all"):
+            deleted_cnt, _ = Order.objects.all().delete()
+            self.stdout.write(self.style.NOTICE(f"  - Cleared all {deleted_cnt} existing orders."))
+        else:
+            deleted_cnt, _ = Order.objects.filter(notes="Demo historical order").delete()
+            if deleted_cnt > 0:
+                self.stdout.write(self.style.NOTICE(f"  - Refreshed {deleted_cnt} previous demo orders."))
+
         now = timezone.now()
         waiter = created_users["Waiter"]
         cashier = created_users["Cashier"]

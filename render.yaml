@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: restaurant-pos-system
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate && python manage.py seed_demo"
+    startCommand: "gunicorn config.wsgi:application"
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: restaurant-pos-db
+          property: connectionString
+
+databases:
+  - name: restaurant-pos-db
+    region: oregon
+    plan: free

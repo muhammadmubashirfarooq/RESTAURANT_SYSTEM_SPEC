@@ -1,6 +1,7 @@
 from .auth import login_view, logout_view, home_redirect
 from .dashboard import dashboard_view
 from .reports import reports_view, reports_export_csv_view
+from .errors import custom_404_view, custom_500_view
 from .billing import (
     billing_list_view,
     billing_detail_view,

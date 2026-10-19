@@ -83,19 +83,23 @@ body {
 .role-kitchen { background: #f59e0b; color: white; }
 .role-cashier { background: #ec4899; color: white; }
 
-/* Demo quick-login pill */
+/* Demo quick-login pill - High Contrast */
 .demo-pill {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .demo-pill:hover {
-    background: rgba(255, 107, 0, 0.1);
+    background: rgba(255, 107, 0, 0.2);
     border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 107, 0, 0.25);
 }
+
 
 /* ========================================================
    Phase 3: Tables Grid & Order Taking Styles
@@ -528,4 +532,72 @@ body {
     background: rgba(255, 107, 0, 0.1);
     color: var(--text-main) !important;
 }
+
+/* ========================================================
+   Phase 7: High-Contrast Text, Polish & Tablet Responsive
+   ======================================================== */
+
+.text-muted {
+    color: #94a3b8 !important;
+}
+
+.text-secondary {
+    color: #cbd5e1 !important;
+}
+
+.form-control::placeholder {
+    color: #94a3b8 !important;
+    opacity: 0.85;
+}
+
+.form-text {
+    color: #94a3b8 !important;
+}
+
+/* Tablet Responsiveness (iPad / 768px - 1024px) */
+@media (max-width: 991.98px) {
+    .btn {
+        min-height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-sm {
+        min-height: 38px;
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    .table-circle {
+        width: 52px;
+        height: 52px;
+    }
+
+    /* Prevent sticky cart stacking clipping on tablet */
+    #order-cart {
+        position: static !important;
+        margin-top: 1rem;
+    }
+
+    .kitchen-column {
+        margin-bottom: 1.5rem;
+    }
+}
+
+/* Friendly 404 & 500 Error Pages */
+.error-page-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.error-code {
+    font-size: 5.5rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -2px;
+}
+
 

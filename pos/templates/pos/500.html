@@ -1,0 +1,30 @@
+{% extends "pos/base.html" %}
+
+{% block title %}500 - Server Error | Spice & Flavor POS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6 text-center">
+            <div class="error-page-card p-5">
+                <div class="mb-3 text-danger">
+                    <span class="error-code d-block text-danger opacity-75">500</span>
+                    <i class="fa-solid fa-triangle-exclamation fs-1 mt-2"></i>
+                </div>
+                <h2 class="fw-bold text-white mb-2">Kitchen Hiccup!</h2>
+                <p class="text-secondary mb-4 fs-6">
+                    Our servers encountered an unexpected issue while processing your request. Please try reloading or contact the manager if the issue persists.
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-3">
+                    <a href="{% url 'home_redirect' %}" class="btn btn-primary-custom px-4 py-2 rounded-pill fw-semibold">
+                        <i class="fa-solid fa-house me-2"></i>Return Home
+                    </a>
+                    <button onclick="location.reload()" class="btn btn-outline-warning px-4 py-2 rounded-pill fw-semibold">
+                        <i class="fa-solid fa-rotate-right me-2"></i>Reload Page
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

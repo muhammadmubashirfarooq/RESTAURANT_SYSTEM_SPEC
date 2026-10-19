@@ -3,70 +3,83 @@
 {% block title %}Login | Spice & Flavor Restaurant POS{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center align-items-center min-vh-80 my-5">
-    <div class="col-md-6 col-lg-5 col-xl-4">
-        <div class="glass-card p-4 p-md-5 text-center">
+<div class="row justify-content-center align-items-center min-vh-80 my-4">
+    <div class="col-md-7 col-lg-5 col-xl-4">
+        <div class="glass-card p-4 p-md-5 text-center shadow-lg border border-secondary border-opacity-50">
             <div class="mb-4">
                 <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle p-3 mb-2" style="width: 70px; height: 70px;">
                     <i class="fa-solid fa-utensils fs-2" style="color: var(--primary-color);"></i>
                 </div>
                 <h3 class="fw-bold text-white mb-1">Spice & Flavor POS</h3>
-                <p class="text-muted small">Restaurant Management System (Phase 1 Foundation)</p>
+                <p class="text-secondary small mb-0">Restaurant Point of Sale & Operations</p>
             </div>
 
             <form method="post" action="{% url 'login' %}">
                 {% csrf_token %}
                 <div class="form-floating mb-3">
                     <input type="text" name="username" class="form-control bg-dark text-white border-secondary" id="usernameInput" placeholder="Username" required autocomplete="off">
-                    <label for="usernameInput" class="text-muted"><i class="fa-solid fa-user me-1"></i> Username</label>
+                    <label for="usernameInput" class="text-secondary"><i class="fa-solid fa-user me-1"></i> Username</label>
                 </div>
 
                 <div class="form-floating mb-4">
                     <input type="password" name="password" class="form-control bg-dark text-white border-secondary" id="passwordInput" placeholder="Password" required>
-                    <label for="passwordInput" class="text-muted"><i class="fa-solid fa-key me-1"></i> Password</label>
+                    <label for="passwordInput" class="text-secondary"><i class="fa-solid fa-key me-1"></i> Password</label>
                 </div>
 
-                <button type="submit" class="btn btn-primary-custom w-100 py-3 mb-3 fs-6">
+                <button type="submit" class="btn btn-primary-custom w-100 py-3 mb-3 fs-6 fw-bold">
                     <i class="fa-solid fa-right-to-bracket me-2"></i> Log In
                 </button>
             </form>
 
             <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 text-start">
-                <h6 class="text-warning mb-2 fs-7 text-uppercase fw-bold"><i class="fa-solid fa-users me-1"></i> Quick Demo Logins</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-warning mb-0 fs-7 text-uppercase fw-bold"><i class="fa-solid fa-users me-1"></i> Demo Accounts</h6>
+                    <span class="text-secondary fs-8"><i class="fa-solid fa-hand-pointer me-1"></i>Tap to auto-fill</span>
+                </div>
                 <div class="row g-2">
                     <div class="col-6">
                         <div class="demo-pill p-2" onclick="fillLogin('admin', 'admin123')">
-                            <span class="role-badge role-admin float-end">Admin</span>
-                            <div class="fw-bold text-white fs-7">admin</div>
-                            <div class="text-muted fs-8">admin123</div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="role-badge role-admin">Admin</span>
+                            </div>
+                            <div class="text-white fs-7 fw-bold">User: <span class="text-warning">admin</span></div>
+                            <div class="text-light fs-8">Pass: <code class="text-info fw-bold">admin123</code></div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="demo-pill p-2" onclick="fillLogin('manager', 'demo123')">
-                            <span class="role-badge role-manager float-end">Manager</span>
-                            <div class="fw-bold text-white fs-7">manager</div>
-                            <div class="text-muted fs-8">demo123</div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="role-badge role-manager">Manager</span>
+                            </div>
+                            <div class="text-white fs-7 fw-bold">User: <span class="text-warning">manager</span></div>
+                            <div class="text-light fs-8">Pass: <code class="text-info fw-bold">demo123</code></div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="demo-pill p-2" onclick="fillLogin('waiter', 'demo123')">
-                            <span class="role-badge role-waiter float-end">Waiter</span>
-                            <div class="fw-bold text-white fs-7">waiter</div>
-                            <div class="text-muted fs-8">demo123</div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="role-badge role-waiter">Waiter</span>
+                            </div>
+                            <div class="text-white fs-7 fw-bold">User: <span class="text-warning">waiter</span></div>
+                            <div class="text-light fs-8">Pass: <code class="text-info fw-bold">demo123</code></div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="demo-pill p-2" onclick="fillLogin('kitchen', 'demo123')">
-                            <span class="role-badge role-kitchen float-end">Kitchen</span>
-                            <div class="fw-bold text-white fs-7">kitchen</div>
-                            <div class="text-muted fs-8">demo123</div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="role-badge role-kitchen">Kitchen</span>
+                            </div>
+                            <div class="text-white fs-7 fw-bold">User: <span class="text-warning">kitchen</span></div>
+                            <div class="text-light fs-8">Pass: <code class="text-info fw-bold">demo123</code></div>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="demo-pill p-2" onclick="fillLogin('cashier', 'demo123')">
-                            <span class="role-badge role-cashier float-end">Cashier</span>
-                            <div class="fw-bold text-white fs-7">cashier</div>
-                            <div class="text-muted fs-8">demo123</div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="role-badge role-cashier">Cashier</span>
+                            </div>
+                            <div class="text-white fs-7 fw-bold">User: <span class="text-warning">cashier</span></div>
+                            <div class="text-light fs-8">Pass: <code class="text-info fw-bold">demo123</code></div>
                         </div>
                     </div>
                 </div>
