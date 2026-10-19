@@ -141,7 +141,11 @@
                     </span>
                 </div>
                 <div class="chart-container position-relative" style="min-height: 250px; height: 260px;">
-                    <canvas id="salesTrendChart"></canvas>
+                    <canvas id="salesTrendChart"
+                            data-currency="{{ currency }}"
+                            data-labels='{{ trend_labels_json|safe }}'
+                            data-values='{{ trend_values_json|safe }}'
+                            data-orders='{{ trend_orders_json|safe }}'></canvas>
                 </div>
             </div>
         </div>
@@ -163,7 +167,11 @@
                 <div class="row align-items-center">
                     <div class="col-7">
                         <div class="chart-container position-relative" style="min-height: 220px; height: 230px;">
-                            <canvas id="ordersStatusChart"></canvas>
+                            <canvas id="ordersStatusChart"
+                                    data-labels='{{ status_labels_json|safe }}'
+                                    data-values='{{ status_values_json|safe }}'
+                                    data-colors='{{ status_colors_json|safe }}'
+                                    data-borders='{{ status_borders_json|safe }}'></canvas>
                         </div>
                     </div>
                     <div class="col-5">
@@ -269,12 +277,13 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     // 1. Sales Trend Line Chart
-    const trendLabels = {{ trend_labels_json|safe }};
-    const trendValues = {{ trend_values_json|safe }};
-    const trendOrders = {{ trend_orders_json|safe }};
-
     const ctxTrend = document.getElementById("salesTrendChart");
     if (ctxTrend) {
+        const trendLabels = JSON.parse(ctxTrend.dataset.labels || '[]');
+        const trendValues = JSON.parse(ctxTrend.dataset.values || '[]');
+        const trendOrders = JSON.parse(ctxTrend.dataset.orders || '[]');
+        const currency = ctxTrend.dataset.currency || 'PKR';
+
         const gradient = ctxTrend.getContext("2d").createLinearGradient(0, 0, 0, 240);
         gradient.addColorStop(0, "rgba(255, 107, 0, 0.4)");
         gradient.addColorStop(1, "rgba(255, 107, 0, 0.0)");
@@ -284,7 +293,7 @@ document.addEventListener("DOMContentLoaded", function() {
             data: {
                 labels: trendLabels,
                 datasets: [{
-                    label: "Sales ({{ currency }})",
+                    label: `Sales (${currency})`,
                     data: trendValues,
                     borderColor: "#ff6b00",
                     backgroundColor: gradient,
@@ -317,7 +326,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 const idx = context.dataIndex;
                                 const val = Number(context.raw).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                 const ord = trendOrders[idx] || 0;
-                                return [`Sales: {{ currency }} ${val}`, `Orders: ${ord}`];
+                                return [`Sales: ${currency} ${val}`, `Orders: ${ord}`];
                             }
                         }
                     }
@@ -343,7 +352,7 @@ document.addEventListener("DOMContentLoaded", function() {
                             color: "#94a3b8",
                             font: { size: 11 },
                             callback: function(value) {
-                                return "{{ currency }} " + Number(value).toLocaleString();
+                                return currency + " " + Number(value).toLocaleString();
                             }
                         }
                     }
@@ -353,13 +362,13 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // 2. Orders by Status Doughnut Chart
-    const statusLabels = {{ status_labels_json|safe }};
-    const statusValues = {{ status_values_json|safe }};
-    const statusColors = {{ status_colors_json|safe }};
-    const statusBorders = {{ status_borders_json|safe }};
-
     const ctxStatus = document.getElementById("ordersStatusChart");
     if (ctxStatus) {
+        const statusLabels = JSON.parse(ctxStatus.dataset.labels || '[]');
+        const statusValues = JSON.parse(ctxStatus.dataset.values || '[]');
+        const statusColors = JSON.parse(ctxStatus.dataset.colors || '[]');
+        const statusBorders = JSON.parse(ctxStatus.dataset.borders || '[]');
+
         new Chart(ctxStatus, {
             type: "doughnut",
             data: {

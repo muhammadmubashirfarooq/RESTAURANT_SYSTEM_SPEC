@@ -301,7 +301,9 @@
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label text-muted small fw-semibold mb-0">Payment Amount</label>
-                                <button type="button" class="btn btn-link btn-sm text-warning p-0 text-decoration-none" id="btnPayFullRemaining">
+                                <button type="button" class="btn btn-link btn-sm text-warning p-0 text-decoration-none" 
+                                        id="btnPayFullRemaining"
+                                        data-remaining="{{ order.remaining_balance|floatformat:2 }}">
                                     Pay Exact Due ({{ setting.currency|default:'PKR' }} {{ order.remaining_balance|floatformat:2 }})
                                 </button>
                             </div>
@@ -340,7 +342,9 @@
                             <!-- Live Change Due Box -->
                             <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-50">
                                 <span class="fw-bold text-white small">Change Due:</span>
-                                <span class="fw-bold fs-5 text-warning" id="liveChangeDueDisplay">{{ setting.currency|default:'PKR' }} 0.00</span>
+                                <span class="fw-bold fs-5 text-warning" 
+                                      id="liveChangeDueDisplay"
+                                      data-currency="{{ setting.currency|default:'PKR' }}">{{ setting.currency|default:'PKR' }} 0.00</span>
                             </div>
                         </div>
 
@@ -388,8 +392,8 @@
     const tenderedInput = document.getElementById('tenderedInput');
     const liveChangeDueDisplay = document.getElementById('liveChangeDueDisplay');
     const btnPayFullRemaining = document.getElementById('btnPayFullRemaining');
-    const fullRemainingVal = "{{ order.remaining_balance|floatformat:2 }}";
-    const currency = "{{ setting.currency|default:'PKR' }}";
+    const fullRemainingVal = btnPayFullRemaining ? (btnPayFullRemaining.dataset.remaining || "0.00") : "0.00";
+    const currency = liveChangeDueDisplay ? (liveChangeDueDisplay.dataset.currency || "PKR") : "PKR";
 
     function updateChangeDue() {
         if (!paymentAmountInput || !tenderedInput || !liveChangeDueDisplay) return;

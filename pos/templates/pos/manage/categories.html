@@ -48,7 +48,8 @@
 
                                     {% if category.items.count == 0 %}
                                     <form method="post" action="{% url 'manage_categories_delete' category.pk %}" class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to delete category {{ category.name }}?');">
+                                          data-category-name="{{ category.name }}"
+                                          onsubmit="return confirm('Are you sure you want to delete category ' + this.dataset.categoryName + '?');">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill">
                                             <i class="fa-solid fa-trash me-1"></i> Delete
