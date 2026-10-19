@@ -48,4 +48,9 @@ urlpatterns = [
 
     # Settings
     path("settings/", views.settings_view, name="settings"),
+
+    # Phase 6: Reports & Analytics
+    path("reports/", views.reports_view, name="reports"),
+    path("reports/export.csv", views.reports_export_csv_view, name="reports_export_csv"),
 ]
+

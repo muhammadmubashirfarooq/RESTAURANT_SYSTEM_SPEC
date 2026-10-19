@@ -491,3 +491,522 @@ def generate_receipt_pdf(order):
     if not pdf.err:
         return result.getvalue()
     return None
+
+
+# =============================================================================
+# Phase 6: Dashboard & Reports Services
+# =============================================================================
+
+def get_dashboard_metrics():
+    """
+    Returns KPI metrics for the Admin/Manager dashboard:
+    - Today's sales: Sum of completed orders total today (Decimal, 2 decimal places).
+    - Today's orders count: Count of completed orders today.
+    - Today's average order value (AOV): today_sales / today_orders_count (Decimal, 2 decimal places).
+    - All-time metrics: total completed orders, total revenue.
+    Only completed (paid) orders count as sales; cancelled orders are excluded.
+    """
+    from django.utils import timezone
+
+    today = timezone.localdate()
+    today_completed_orders = Order.objects.filter(
+        status=Order.Status.COMPLETED,
+        created_at__date=today,
+    )
+
+    today_sales = sum((order.total for order in today_completed_orders), Decimal("0.00")).quantize(Decimal("0.01"))
+    today_orders_count = today_completed_orders.count()
+
+    if today_orders_count > 0:
+        today_aov = (today_sales / Decimal(str(today_orders_count))).quantize(Decimal("0.01"))
+    else:
+        today_aov = Decimal("0.00")
+
+    # All-time / Lifetime stats
+    all_completed = Order.objects.filter(status=Order.Status.COMPLETED)
+    lifetime_sales = sum((order.total for order in all_completed), Decimal("0.00")).quantize(Decimal("0.01"))
+    lifetime_orders_count = all_completed.count()
+
+    # Active tables / orders right now
+    open_orders_count = Order.objects.exclude(
+        status__in=[Order.Status.COMPLETED, Order.Status.CANCELLED]
+    ).count()
+
+    return {
+        "today_date": today,
+        "today_sales": today_sales,
+        "today_orders_count": today_orders_count,
+        "today_aov": today_aov,
+        "lifetime_sales": lifetime_sales,
+        "lifetime_orders_count": lifetime_orders_count,
+        "open_orders_count": open_orders_count,
+    }
+
+
+def get_dashboard_top_items(limit=5):
+    """
+    Returns the top menu items by quantity sold from completed orders.
+    Cancelled items and cancelled orders are excluded.
+    Returns list of dicts with:
+    - rank
+    - id, name, category, price
+    - quantity
+    - revenue (Decimal, 2 decimal places)
+    """
+    from django.db.models import Sum, F
+
+    items_qs = (
+        OrderItem.objects.filter(order__status=Order.Status.COMPLETED)
+        .exclude(status=OrderItem.Status.CANCELLED)
+        .values(
+            "menu_item__id",
+            "menu_item__name",
+            "menu_item__category__name",
+            "menu_item__price",
+        )
+        .annotate(
+            total_qty=Sum("quantity"),
+            total_revenue=Sum(F("quantity") * F("unit_price")),
+        )
+        .order_by("-total_qty", "-total_revenue")[:limit]
+    )
+
+    top_items = []
+    for idx, item in enumerate(items_qs, start=1):
+        rev = item["total_revenue"] or Decimal("0.00")
+        if not isinstance(rev, Decimal):
+            rev = Decimal(str(rev))
+        top_items.append({
+            "rank": idx,
+            "id": item["menu_item__id"],
+            "name": item["menu_item__name"],
+            "category": item["menu_item__category__name"] or "Uncategorized",
+            "price": Decimal(str(item["menu_item__price"])).quantize(Decimal("0.01")),
+            "quantity": item["total_qty"] or 0,
+            "revenue": rev.quantize(Decimal("0.01")),
+        })
+
+    return top_items
+
+
+def get_dashboard_sales_trend(days=7):
+    """
+    Returns the last N days sales for the Chart.js line chart.
+    Each day has:
+    - date: date object
+    - date_str: YYYY-MM-DD
+    - label: e.g. "Oct 19"
+    - weekday: e.g. "Mon"
+    - sales: Decimal (2 decimal places)
+    - sales_float: float for Chart.js
+    - orders_count: int
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+
+    today = timezone.localdate()
+    day_list = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
+
+    trend = []
+    for d in day_list:
+        day_completed_orders = Order.objects.filter(
+            status=Order.Status.COMPLETED,
+            created_at__date=d,
+        )
+        sales = sum((order.total for order in day_completed_orders), Decimal("0.00")).quantize(Decimal("0.01"))
+        trend.append({
+            "date": d,
+            "date_str": d.isoformat(),
+            "label": d.strftime("%b %d"),
+            "weekday": d.strftime("%a"),
+            "sales": sales,
+            "sales_float": float(sales),
+            "orders_count": day_completed_orders.count(),
+        })
+
+    return trend
+
+
+def get_dashboard_orders_by_status():
+    """
+    Returns order counts grouped by status for Chart.js doughnut chart.
+    Includes color codes and human-readable labels matching Order.Status.choices.
+    """
+    from django.db.models import Count
+
+    status_counts = dict(
+        Order.objects.values_list("status").annotate(count=Count("id"))
+    )
+
+    STATUS_CONFIG = {
+        Order.Status.PENDING: {"label": "Pending", "color": "#f59e0b", "border": "#d97706"},
+        Order.Status.PREPARING: {"label": "Preparing", "color": "#06b6d4", "border": "#0891b2"},
+        Order.Status.READY: {"label": "Ready", "color": "#3b82f6", "border": "#2563eb"},
+        Order.Status.SERVED: {"label": "Served", "color": "#8b5cf6", "border": "#7c3aed"},
+        Order.Status.COMPLETED: {"label": "Completed", "color": "#10b981", "border": "#059669"},
+        Order.Status.CANCELLED: {"label": "Cancelled", "color": "#ef4444", "border": "#dc2626"},
+    }
+
+    results = []
+    for status_key, config in STATUS_CONFIG.items():
+        cnt = status_counts.get(status_key, 0)
+        results.append({
+            "status": status_key,
+            "label": config["label"],
+            "count": cnt,
+            "color": config["color"],
+            "border": config["border"],
+        })
+
+    return results
+
+
+def parse_date_range(start_date_str, end_date_str, default_days=30):
+    """
+    Parses and sanitizes start and end date strings.
+    Defaults to last default_days ending today if missing or invalid.
+    Ensures start_date <= end_date.
+    """
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+
+    today = timezone.localdate()
+
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            end_date = today
+    else:
+        end_date = today
+
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            start_date = end_date - timedelta(days=default_days - 1)
+    else:
+        start_date = end_date - timedelta(days=default_days - 1)
+
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    return start_date, end_date
+
+
+def get_reports_data(start_date=None, end_date=None):
+    """
+    Generates reports data for the given date range:
+    1. Sales by Day
+    2. Sales by Item
+    3. Sales by Payment Method
+    4. Grand Totals Summary
+    Only completed orders are included in sales. Cancelled orders are excluded.
+    All money amounts are Decimal with 2 decimal places.
+    """
+    from django.db.models import Sum, F, Count
+
+    if start_date is None or end_date is None:
+        start_date, end_date = parse_date_range(None, None)
+
+    # 1. Base queryset of completed orders in date range
+    completed_orders = (
+        Order.objects.filter(
+            status=Order.Status.COMPLETED,
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+        )
+        .prefetch_related("items", "payments")
+        .order_by("-created_at")
+    )
+
+    # Group completed orders by day
+    orders_by_date = {}
+    for order in completed_orders:
+        o_date = order.created_at.date()
+        if o_date not in orders_by_date:
+            orders_by_date[o_date] = []
+        orders_by_date[o_date].append(order)
+
+    # Build sales by day (sorted descending by date)
+    sales_by_day = []
+    unique_dates = sorted(orders_by_date.keys(), reverse=True)
+
+    grand_subtotal = Decimal("0.00")
+    grand_discount = Decimal("0.00")
+    grand_tax = Decimal("0.00")
+    grand_sales = Decimal("0.00")
+    grand_orders_count = len(completed_orders)
+
+    for d in unique_dates:
+        d_orders = orders_by_date[d]
+        d_count = len(d_orders)
+        d_subtotal = sum((o.subtotal for o in d_orders), Decimal("0.00")).quantize(Decimal("0.01"))
+        d_discount = sum((o.discount for o in d_orders), Decimal("0.00")).quantize(Decimal("0.01"))
+        d_tax = sum((o.tax for o in d_orders), Decimal("0.00")).quantize(Decimal("0.01"))
+        d_total = sum((o.total for o in d_orders), Decimal("0.00")).quantize(Decimal("0.01"))
+        d_aov = (d_total / Decimal(str(d_count))).quantize(Decimal("0.01")) if d_count > 0 else Decimal("0.00")
+
+        grand_subtotal += d_subtotal
+        grand_discount += d_discount
+        grand_tax += d_tax
+        grand_sales += d_total
+
+        sales_by_day.append({
+            "date": d,
+            "date_str": d.isoformat(),
+            "label": d.strftime("%d %b %Y"),
+            "weekday": d.strftime("%A"),
+            "orders_count": d_count,
+            "subtotal": d_subtotal,
+            "discount": d_discount,
+            "tax": d_tax,
+            "total": d_total,
+            "aov": d_aov,
+        })
+
+    grand_subtotal = grand_subtotal.quantize(Decimal("0.01"))
+    grand_discount = grand_discount.quantize(Decimal("0.01"))
+    grand_tax = grand_tax.quantize(Decimal("0.01"))
+    grand_sales = grand_sales.quantize(Decimal("0.01"))
+    grand_aov = (
+        (grand_sales / Decimal(str(grand_orders_count))).quantize(Decimal("0.01"))
+        if grand_orders_count > 0
+        else Decimal("0.00")
+    )
+
+    # 2. Sales by item
+    items_qs = (
+        OrderItem.objects.filter(
+            order__status=Order.Status.COMPLETED,
+            order__created_at__date__gte=start_date,
+            order__created_at__date__lte=end_date,
+        )
+        .exclude(status=OrderItem.Status.CANCELLED)
+        .values(
+            "menu_item__id",
+            "menu_item__name",
+            "menu_item__category__name",
+            "menu_item__price",
+        )
+        .annotate(
+            total_qty=Sum("quantity"),
+            total_revenue=Sum(F("quantity") * F("unit_price")),
+        )
+        .order_by("-total_qty", "-total_revenue")
+    )
+
+    sales_by_item = []
+    grand_item_qty = 0
+    grand_item_revenue = Decimal("0.00")
+
+    for item in items_qs:
+        qty = item["total_qty"] or 0
+        rev = item["total_revenue"] or Decimal("0.00")
+        if not isinstance(rev, Decimal):
+            rev = Decimal(str(rev))
+        rev = rev.quantize(Decimal("0.01"))
+        price = Decimal(str(item["menu_item__price"])).quantize(Decimal("0.01"))
+
+        grand_item_qty += qty
+        grand_item_revenue += rev
+
+        sales_by_item.append({
+            "id": item["menu_item__id"],
+            "name": item["menu_item__name"],
+            "category": item["menu_item__category__name"] or "Uncategorized",
+            "unit_price": price,
+            "quantity": qty,
+            "total_revenue": rev,
+        })
+    grand_item_revenue = grand_item_revenue.quantize(Decimal("0.01"))
+
+    # 3. Sales by payment method
+    pm_qs = (
+        Payment.objects.filter(
+            order__status=Order.Status.COMPLETED,
+            order__created_at__date__gte=start_date,
+            order__created_at__date__lte=end_date,
+        )
+        .values("method")
+        .annotate(
+            total_count=Count("id"),
+            total_amount=Sum("amount"),
+        )
+        .order_by("-total_amount")
+    )
+
+    sales_by_payment_method = []
+    grand_payment_amount = Decimal("0.00")
+    grand_payment_count = 0
+
+    METHOD_LABELS = {
+        Payment.Method.CASH: {"name": "Cash", "badge": "success", "icon": "fa-money-bill-wave"},
+        Payment.Method.CARD: {"name": "Card", "badge": "primary", "icon": "fa-credit-card"},
+        Payment.Method.ONLINE: {"name": "Online", "badge": "info", "icon": "fa-globe"},
+    }
+
+    pm_list = list(pm_qs)
+    for p in pm_list:
+        amt = p["total_amount"] or Decimal("0.00")
+        if not isinstance(amt, Decimal):
+            amt = Decimal(str(amt))
+        grand_payment_amount += amt
+        grand_payment_count += p["total_count"] or 0
+
+    grand_payment_amount = grand_payment_amount.quantize(Decimal("0.01"))
+
+    for p in pm_list:
+        m_code = p["method"]
+        amt = p["total_amount"] or Decimal("0.00")
+        if not isinstance(amt, Decimal):
+            amt = Decimal(str(amt))
+        amt = amt.quantize(Decimal("0.01"))
+        cnt = p["total_count"] or 0
+        cfg = METHOD_LABELS.get(m_code, {"name": m_code.title(), "badge": "secondary", "icon": "fa-receipt"})
+
+        pct = (
+            ((amt / grand_payment_amount) * Decimal("100")).quantize(Decimal("0.1"))
+            if grand_payment_amount > Decimal("0.00")
+            else Decimal("0.0")
+        )
+
+        sales_by_payment_method.append({
+            "method": m_code,
+            "label": cfg["name"],
+            "badge": cfg["badge"],
+            "icon": cfg["icon"],
+            "count": cnt,
+            "total_amount": amt,
+            "percentage": pct,
+        })
+
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "sales_by_day": sales_by_day,
+        "sales_by_item": sales_by_item,
+        "sales_by_payment_method": sales_by_payment_method,
+        "grand_orders_count": grand_orders_count,
+        "grand_subtotal": grand_subtotal,
+        "grand_discount": grand_discount,
+        "grand_tax": grand_tax,
+        "grand_sales": grand_sales,
+        "grand_aov": grand_aov,
+        "grand_item_qty": grand_item_qty,
+        "grand_item_revenue": grand_item_revenue,
+        "grand_payment_amount": grand_payment_amount,
+        "grand_payment_count": grand_payment_count,
+    }
+
+
+def generate_sales_report_csv(start_date, end_date):
+    """
+    Generates a CSV string containing all completed orders and line totals
+    within the specified date range.
+    """
+    import csv
+    import io
+    from django.db.models import Sum
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # 1. Header Information
+    setting = Setting.objects.first()
+    rest_name = setting.restaurant_name if setting else "Restaurant"
+    currency = setting.currency if setting else "PKR"
+
+    writer.writerow([f"{rest_name} - Sales Report"])
+    writer.writerow([f"Date Range: {start_date.isoformat()} to {end_date.isoformat()}"])
+    writer.writerow([f"Currency: {currency}"])
+    writer.writerow([])
+
+    # 2. Orders Table
+    writer.writerow([
+        "Order ID",
+        "Date",
+        "Time",
+        "Order Type",
+        "Table",
+        "Waiter",
+        "Items Count",
+        f"Subtotal ({currency})",
+        f"Discount ({currency})",
+        "Tax Rate (%)",
+        f"Tax ({currency})",
+        f"Total Sales ({currency})",
+        "Payment Method(s)",
+        "Payment Reference(s)",
+    ])
+
+    orders = (
+        Order.objects.filter(
+            status=Order.Status.COMPLETED,
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+        )
+        .select_related("table", "waiter")
+        .prefetch_related("items", "payments")
+        .order_by("created_at")
+    )
+
+    tot_subtotal = Decimal("0.00")
+    tot_discount = Decimal("0.00")
+    tot_tax = Decimal("0.00")
+    tot_sales = Decimal("0.00")
+    tot_items_count = 0
+
+    for o in orders:
+        items_cnt = o.items.exclude(status=OrderItem.Status.CANCELLED).aggregate(s=Sum("quantity"))["s"] or 0
+        tot_items_count += items_cnt
+        sub = o.subtotal
+        disc = o.discount
+        tx = o.tax
+        tot = o.total
+
+        tot_subtotal += sub
+        tot_discount += disc
+        tot_tax += tx
+        tot_sales += tot
+
+        pm_methods = ", ".join([p.get_method_display() for p in o.payments.all()]) or "None"
+        pm_refs = ", ".join([p.reference for p in o.payments.all() if p.reference]) or "None"
+
+        writer.writerow([
+            f"#{o.pk}",
+            o.created_at.strftime("%Y-%m-%d"),
+            o.created_at.strftime("%H:%M:%S"),
+            o.get_order_type_display(),
+            o.table.name if o.table else "N/A",
+            o.waiter.username if o.waiter else "N/A",
+            items_cnt,
+            f"{sub:.2f}",
+            f"{disc:.2f}",
+            f"{o.tax_rate:.2f}",
+            f"{tx:.2f}",
+            f"{tot:.2f}",
+            pm_methods,
+            pm_refs,
+        ])
+
+    writer.writerow([])
+    writer.writerow([
+        "TOTALS",
+        "",
+        "",
+        "",
+        "",
+        f"{orders.count()} orders",
+        tot_items_count,
+        f"{tot_subtotal:.2f}",
+        f"{tot_discount:.2f}",
+        "",
+        f"{tot_tax:.2f}",
+        f"{tot_sales:.2f}",
+        "",
+        "",
+    ])
+
+    return output.getvalue()
+

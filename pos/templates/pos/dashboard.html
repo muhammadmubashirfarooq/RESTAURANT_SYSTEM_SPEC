@@ -1,0 +1,406 @@
+{% extends "pos/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard | {{ setting.restaurant_name|default:"Spice & Flavor POS" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="h3 fw-bold text-white mb-1">
+                <i class="fa-solid fa-chart-line text-warning me-2"></i>Sales & Operations Dashboard
+            </h2>
+            <p class="text-muted small mb-0">
+                Live performance overview for <strong>{{ setting.restaurant_name|default:"Spice & Flavor" }}</strong> • {{ metrics.today_date|date:"l, F d, Y" }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'reports' %}" class="btn btn-outline-warning rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Detailed Reports
+            </a>
+            <a href="{% url 'billing' %}" class="btn btn-outline-info rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-receipt me-1"></i> Cashier Billing
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. KPI Cards Row -->
+    <div class="row g-3 mb-4">
+        <!-- Today's Sales -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="glass-card p-3 h-100 position-relative overflow-hidden kpi-card-sales">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold fs-8">Today's Sales</span>
+                        <h3 class="fw-bold text-white mt-1 mb-0 fs-3">
+                            <span class="text-warning fs-6 me-1">{{ currency }}</span>{{ metrics.today_sales|floatformat:2 }}
+                        </h3>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-warning bg-opacity-10 text-warning">
+                        <i class="fa-solid fa-coins fa-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                    <span class="text-success small fw-semibold">
+                        <i class="fa-solid fa-circle-check me-1"></i>Completed (paid) orders
+                    </span>
+                    <span class="badge bg-warning bg-opacity-25 text-warning rounded-pill">Today</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Orders Count -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="glass-card p-3 h-100 position-relative overflow-hidden kpi-card-orders">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold fs-8">Orders Count</span>
+                        <h3 class="fw-bold text-white mt-1 mb-0 fs-3">
+                            {{ metrics.today_orders_count }}
+                            <span class="fs-6 text-muted fw-normal">orders</span>
+                        </h3>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-info bg-opacity-10 text-info">
+                        <i class="fa-solid fa-bag-shopping fa-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                    <span class="text-info small fw-semibold">
+                        <i class="fa-solid fa-receipt me-1"></i>Paid sales count
+                    </span>
+                    <span class="badge bg-info bg-opacity-25 text-info rounded-pill">Today</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Average Order Value (AOV) -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="glass-card p-3 h-100 position-relative overflow-hidden kpi-card-aov">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold fs-8">Average Order Value</span>
+                        <h3 class="fw-bold text-white mt-1 mb-0 fs-3">
+                            <span class="text-warning fs-6 me-1">{{ currency }}</span>{{ metrics.today_aov|floatformat:2 }}
+                        </h3>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-success bg-opacity-10 text-success">
+                        <i class="fa-solid fa-arrow-trend-up fa-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">
+                        Per completed order
+                    </span>
+                    <span class="badge bg-success bg-opacity-25 text-success rounded-pill">Avg</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Operations / Lifetime Overview -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="glass-card p-3 h-100 position-relative overflow-hidden kpi-card-status">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted text-uppercase fw-semibold fs-8">Active / Lifetime Orders</span>
+                        <h3 class="fw-bold text-white mt-1 mb-0 fs-3">
+                            {{ metrics.open_orders_count }}
+                            <span class="fs-6 text-muted fw-normal">active now</span>
+                        </h3>
+                    </div>
+                    <div class="kpi-icon-wrapper bg-primary bg-opacity-10 text-primary">
+                        <i class="fa-solid fa-clock-rotate-left fa-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                    <span class="text-muted small text-truncate" title="{{ metrics.lifetime_orders_count }} completed orders">
+                        {{ metrics.lifetime_orders_count }} total completed
+                    </span>
+                    <span class="text-muted small fw-semibold">
+                        {{ currency }} {{ metrics.lifetime_sales|floatformat:0 }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Charts Row: Sales Trend + Orders by Status -->
+    <div class="row g-3 mb-4">
+        <!-- Last 7 Days Sales Line Chart -->
+        <div class="col-12 col-lg-7">
+            <div class="glass-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold text-white mb-0">
+                            <i class="fa-solid fa-chart-area text-warning me-2"></i>Sales Trend (Last 7 Days)
+                        </h5>
+                        <small class="text-muted">Daily net sales from completed orders</small>
+                    </div>
+                    <span class="badge bg-warning bg-opacity-15 text-warning px-3 py-1 rounded-pill">
+                        Line Chart
+                    </span>
+                </div>
+                <div class="chart-container position-relative" style="min-height: 250px; height: 260px;">
+                    <canvas id="salesTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders by Status Doughnut Chart -->
+        <div class="col-12 col-lg-5">
+            <div class="glass-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold text-white mb-0">
+                            <i class="fa-solid fa-chart-pie text-info me-2"></i>Orders by Status
+                        </h5>
+                        <small class="text-muted">Breakdown across all current & historical orders</small>
+                    </div>
+                    <span class="badge bg-info bg-opacity-15 text-info px-3 py-1 rounded-pill">
+                        Distribution
+                    </span>
+                </div>
+                <div class="row align-items-center">
+                    <div class="col-7">
+                        <div class="chart-container position-relative" style="min-height: 220px; height: 230px;">
+                            <canvas id="ordersStatusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <div class="d-flex flex-column gap-2 pe-2">
+                            {% for item in status_breakdown %}
+                            <div class="d-flex justify-content-between align-items-center small py-1 border-bottom border-secondary border-opacity-25">
+                                <span class="d-flex align-items-center text-truncate">
+                                    <span class="status-legend-dot me-2" style="background-color: {{ item.color }};"></span>
+                                    <span class="text-light">{{ item.label }}</span>
+                                </span>
+                                <span class="badge rounded-pill fw-bold" style="background-color: rgba(255,255,255,0.08); color: {{ item.color }};">
+                                    {{ item.count }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Top 5 Items Table -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="glass-card p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <div>
+                        <h5 class="fw-bold text-white mb-0">
+                            <i class="fa-solid fa-trophy text-warning me-2"></i>Top 5 Best-Selling Items
+                        </h5>
+                        <small class="text-muted">Ranked by total quantity sold in completed orders</small>
+                    </div>
+                    <a href="{% url 'reports' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <i class="fa-solid fa-list me-1"></i> View All Items in Reports
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 custom-dashboard-table">
+                        <thead>
+                            <tr class="text-muted fs-8 text-uppercase">
+                                <th class="text-center" style="width: 70px;">Rank</th>
+                                <th>Menu Item</th>
+                                <th>Category</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-center">Quantity Sold</th>
+                                <th class="text-end">Total Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_items %}
+                            <tr>
+                                <td class="text-center">
+                                    {% if item.rank == 1 %}
+                                        <span class="rank-badge rank-1"><i class="fa-solid fa-crown text-warning"></i> 1</span>
+                                    {% elif item.rank == 2 %}
+                                        <span class="rank-badge rank-2">2</span>
+                                    {% elif item.rank == 3 %}
+                                        <span class="rank-badge rank-3">3</span>
+                                    {% else %}
+                                        <span class="rank-badge rank-other">{{ item.rank }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-semibold text-white">{{ item.name }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary bg-opacity-25 text-light rounded-pill px-2 py-1">
+                                        {{ item.category }}
+                                    </span>
+                                </td>
+                                <td class="text-end text-muted font-monospace">
+                                    {{ currency }} {{ item.price|floatformat:2 }}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning bg-opacity-20 text-warning px-3 py-1 rounded-pill fw-bold">
+                                        {{ item.quantity }} sold
+                                    </span>
+                                </td>
+                                <td class="text-end fw-bold text-white font-monospace">
+                                    {{ currency }} {{ item.revenue|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="fa-solid fa-chart-simple fa-2x mb-2 d-block text-secondary"></i>
+                                    No completed orders found. Once orders are paid and completed, top items will appear here.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Sales Trend Line Chart
+    const trendLabels = {{ trend_labels_json|safe }};
+    const trendValues = {{ trend_values_json|safe }};
+    const trendOrders = {{ trend_orders_json|safe }};
+
+    const ctxTrend = document.getElementById("salesTrendChart");
+    if (ctxTrend) {
+        const gradient = ctxTrend.getContext("2d").createLinearGradient(0, 0, 0, 240);
+        gradient.addColorStop(0, "rgba(255, 107, 0, 0.4)");
+        gradient.addColorStop(1, "rgba(255, 107, 0, 0.0)");
+
+        new Chart(ctxTrend, {
+            type: "line",
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: "Sales ({{ currency }})",
+                    data: trendValues,
+                    borderColor: "#ff6b00",
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: "#ff6b00",
+                    pointBorderColor: "#ffffff",
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: "rgba(30, 38, 56, 0.95)",
+                        titleColor: "#ffffff",
+                        bodyColor: "#f1f5f9",
+                        borderColor: "#ff6b00",
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                const idx = context.dataIndex;
+                                const val = Number(context.raw).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                const ord = trendOrders[idx] || 0;
+                                return [`Sales: {{ currency }} ${val}`, `Orders: ${ord}`];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: "rgba(255, 255, 255, 0.05)",
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: "#94a3b8",
+                            font: { size: 11 }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: "rgba(255, 255, 255, 0.06)",
+                            drawBorder: false,
+                        },
+                        ticks: {
+                            color: "#94a3b8",
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return "{{ currency }} " + Number(value).toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Orders by Status Doughnut Chart
+    const statusLabels = {{ status_labels_json|safe }};
+    const statusValues = {{ status_values_json|safe }};
+    const statusColors = {{ status_colors_json|safe }};
+    const statusBorders = {{ status_borders_json|safe }};
+
+    const ctxStatus = document.getElementById("ordersStatusChart");
+    if (ctxStatus) {
+        new Chart(ctxStatus, {
+            type: "doughnut",
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusValues,
+                    backgroundColor: statusColors,
+                    borderColor: statusBorders,
+                    borderWidth: 1.5,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "68%",
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: "rgba(30, 38, 56, 0.95)",
+                        titleColor: "#ffffff",
+                        bodyColor: "#f1f5f9",
+                        borderColor: "#2e3a52",
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return ` ${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

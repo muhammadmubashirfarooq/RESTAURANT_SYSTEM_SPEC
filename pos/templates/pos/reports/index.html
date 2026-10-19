@@ -1,0 +1,429 @@
+{% extends "pos/base.html" %}
+{% load static %}
+
+{% block title %}Sales Reports | {{ setting.restaurant_name|default:"Spice & Flavor POS" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="h3 fw-bold text-white mb-1">
+                <i class="fa-solid fa-file-invoice-dollar text-warning me-2"></i>Sales Reports & Analytics
+            </h2>
+            <p class="text-muted small mb-0">
+                Detailed breakdowns by day, item, and payment method • All sales derived strictly from completed orders
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'reports_export_csv' %}?start_date={{ start_date }}&end_date={{ end_date }}" 
+               class="btn btn-success rounded-pill px-4 shadow-sm fw-semibold" id="btnExportCsv">
+                <i class="fa-solid fa-file-csv me-2"></i>Export to CSV
+            </a>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Date Filter Form Card -->
+    <div class="glass-card p-3 mb-4">
+        <form method="GET" action="{% url 'reports' %}" id="reportFilterForm" class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label for="startDateInput" class="form-label text-muted fs-8 fw-semibold text-uppercase">Start Date</label>
+                <input type="date" class="form-control bg-dark border-secondary text-white" 
+                       id="startDateInput" name="start_date" value="{{ start_date }}" required>
+            </div>
+            <div class="col-12 col-md-3">
+                <label for="endDateInput" class="form-label text-muted fs-8 fw-semibold text-uppercase">End Date</label>
+                <input type="date" class="form-control bg-dark border-secondary text-white" 
+                       id="endDateInput" name="end_date" value="{{ end_date }}" required>
+            </div>
+            <div class="col-12 col-md-3">
+                <button type="submit" class="btn btn-primary-custom w-100 fw-semibold" id="btnFilterSubmit">
+                    <i class="fa-solid fa-filter me-2"></i>Apply Filter
+                </button>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="dropdown w-100">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="quickRangesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-calendar-days me-1"></i> Quick Presets
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" aria-labelledby="quickRangesDropdown">
+                        <li><a class="dropdown-item preset-btn" href="#" data-range="today">Today</a></li>
+                        <li><a class="dropdown-item preset-btn" href="#" data-range="last7">Last 7 Days</a></li>
+                        <li><a class="dropdown-item preset-btn" href="#" data-range="last14">Last 14 Days</a></li>
+                        <li><a class="dropdown-item preset-btn" href="#" data-range="thisMonth">This Month</a></li>
+                        <li><a class="dropdown-item preset-btn" href="#" data-range="last30">Last 30 Days</a></li>
+                    </ul>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary KPI Stats for Selected Period -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="glass-card p-3 h-100">
+                <span class="text-muted text-uppercase fs-8 fw-semibold">Net Period Sales</span>
+                <h4 class="fw-bold text-white mt-1 mb-0 fs-4">
+                    <span class="text-warning fs-6 me-1">{{ currency }}</span>{{ report.grand_sales|floatformat:2 }}
+                </h4>
+                <small class="text-success mt-2 d-block">
+                    <i class="fa-solid fa-circle-check me-1"></i>{{ report.grand_orders_count }} completed orders
+                </small>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="glass-card p-3 h-100">
+                <span class="text-muted text-uppercase fs-8 fw-semibold">Completed Orders</span>
+                <h4 class="fw-bold text-white mt-1 mb-0 fs-4">
+                    {{ report.grand_orders_count }}
+                </h4>
+                <small class="text-muted mt-2 d-block">
+                    Total paid orders in range
+                </small>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="glass-card p-3 h-100">
+                <span class="text-muted text-uppercase fs-8 fw-semibold">Items Sold</span>
+                <h4 class="fw-bold text-white mt-1 mb-0 fs-4">
+                    {{ report.grand_item_qty }}
+                </h4>
+                <small class="text-muted mt-2 d-block">
+                    Across {{ report.sales_by_item|length }} distinct items
+                </small>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="glass-card p-3 h-100">
+                <span class="text-muted text-uppercase fs-8 fw-semibold">Average Order Value</span>
+                <h4 class="fw-bold text-white mt-1 mb-0 fs-4">
+                    <span class="text-warning fs-6 me-1">{{ currency }}</span>{{ report.grand_aov|floatformat:2 }}
+                </h4>
+                <small class="text-muted mt-2 d-block">
+                    Sales / Completed Orders
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Navigation Tabs -->
+    <ul class="nav nav-pills mb-3 gap-2" id="reportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4" id="daily-tab" data-bs-toggle="pill" data-bs-target="#daily-pane" type="button" role="tab" aria-controls="daily-pane" aria-selected="true">
+                <i class="fa-solid fa-calendar-day me-2"></i>Sales by Day
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4" id="items-tab" data-bs-toggle="pill" data-bs-target="#items-pane" type="button" role="tab" aria-controls="items-pane" aria-selected="false">
+                <i class="fa-solid fa-utensils me-2"></i>Sales by Item
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4" id="payment-tab" data-bs-toggle="pill" data-bs-target="#payment-pane" type="button" role="tab" aria-controls="payment-pane" aria-selected="false">
+                <i class="fa-solid fa-credit-card me-2"></i>Sales by Payment Method
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="reportTabsContent">
+        <!-- Tab 1: Sales by Day -->
+        <div class="tab-pane fade show active" id="daily-pane" role="tabpanel" aria-labelledby="daily-tab">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-calendar-day text-warning me-2"></i>Daily Sales Breakdown
+                    </h5>
+                    <span class="text-muted small">Showing {{ report.sales_by_day|length }} active days</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 custom-report-table">
+                        <thead>
+                            <tr class="text-muted fs-8 text-uppercase">
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th class="text-center">Orders</th>
+                                <th class="text-end">Subtotal</th>
+                                <th class="text-end">Discounts</th>
+                                <th class="text-end">Tax</th>
+                                <th class="text-end">Net Sales</th>
+                                <th class="text-end">AOV</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in report.sales_by_day %}
+                            <tr>
+                                <td class="fw-semibold text-white font-monospace">
+                                    {{ row.date_str }}
+                                </td>
+                                <td class="text-muted">
+                                    {{ row.weekday }}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary bg-opacity-25 text-light rounded-pill px-3 py-1">
+                                        {{ row.orders_count }}
+                                    </span>
+                                </td>
+                                <td class="text-end text-muted font-monospace">
+                                    {{ currency }} {{ row.subtotal|floatformat:2 }}
+                                </td>
+                                <td class="text-end text-danger font-monospace">
+                                    {% if row.discount > 0 %}-{{ currency }} {{ row.discount|floatformat:2 }}{% else %}-{% endif %}
+                                </td>
+                                <td class="text-end text-muted font-monospace">
+                                    {{ currency }} {{ row.tax|floatformat:2 }}
+                                </td>
+                                <td class="text-end fw-bold text-warning font-monospace">
+                                    {{ currency }} {{ row.total|floatformat:2 }}
+                                </td>
+                                <td class="text-end text-white font-monospace">
+                                    {{ currency }} {{ row.aov|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    No completed orders found in this date range. Try widening the range above.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if report.sales_by_day %}
+                        <tfoot class="border-top-2 border-warning">
+                            <tr class="fw-bold bg-dark bg-opacity-50 text-white">
+                                <td colspan="2" class="text-uppercase text-warning">Total for Period</td>
+                                <td class="text-center text-warning">{{ report.grand_orders_count }}</td>
+                                <td class="text-end font-monospace">{{ currency }} {{ report.grand_subtotal|floatformat:2 }}</td>
+                                <td class="text-end text-danger font-monospace">-{{ currency }} {{ report.grand_discount|floatformat:2 }}</td>
+                                <td class="text-end font-monospace">{{ currency }} {{ report.grand_tax|floatformat:2 }}</td>
+                                <td class="text-end text-warning font-monospace fs-6">{{ currency }} {{ report.grand_sales|floatformat:2 }}</td>
+                                <td class="text-end font-monospace">{{ currency }} {{ report.grand_aov|floatformat:2 }}</td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Sales by Item -->
+        <div class="tab-pane fade" id="items-pane" role="tabpanel" aria-labelledby="items-tab">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-utensils text-warning me-2"></i>Itemized Sales Breakdown
+                    </h5>
+                    <span class="text-muted small">{{ report.sales_by_item|length }} distinct menu items sold</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 custom-report-table">
+                        <thead>
+                            <tr class="text-muted fs-8 text-uppercase">
+                                <th style="width: 50px;">#</th>
+                                <th>Menu Item</th>
+                                <th>Category</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-center">Quantity Sold</th>
+                                <th class="text-end">Gross Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in report.sales_by_item %}
+                            <tr>
+                                <td class="text-muted">{{ forloop.counter }}</td>
+                                <td class="fw-semibold text-white">{{ item.name }}</td>
+                                <td>
+                                    <span class="badge bg-secondary bg-opacity-25 text-light rounded-pill px-2 py-1">
+                                        {{ item.category }}
+                                    </span>
+                                </td>
+                                <td class="text-end text-muted font-monospace">
+                                    {{ currency }} {{ item.unit_price|floatformat:2 }}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-warning bg-opacity-20 text-warning px-3 py-1 rounded-pill fw-bold">
+                                        {{ item.quantity }}
+                                    </span>
+                                </td>
+                                <td class="text-end fw-bold text-white font-monospace">
+                                    {{ currency }} {{ item.total_revenue|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    No item sales recorded in this period.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if report.sales_by_item %}
+                        <tfoot class="border-top-2 border-warning">
+                            <tr class="fw-bold bg-dark bg-opacity-50 text-white">
+                                <td colspan="4" class="text-uppercase text-warning">Total Items Sold</td>
+                                <td class="text-center text-warning">{{ report.grand_item_qty }}</td>
+                                <td class="text-end text-warning font-monospace fs-6">{{ currency }} {{ report.grand_item_revenue|floatformat:2 }}</td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Sales by Payment Method -->
+        <div class="tab-pane fade" id="payment-pane" role="tabpanel" aria-labelledby="payment-tab">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h5 class="fw-bold text-white mb-0">
+                            <i class="fa-solid fa-credit-card text-warning me-2"></i>Sales by Payment Method
+                        </h5>
+                        <small class="text-muted">Reconciled payments from completed orders</small>
+                    </div>
+                    <span class="badge bg-success bg-opacity-20 text-success px-3 py-2 rounded-pill">
+                        Total: {{ currency }} {{ report.grand_payment_amount|floatformat:2 }}
+                    </span>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    {% for pm in report.sales_by_payment_method %}
+                    <div class="col-12 col-md-4">
+                        <div class="glass-card p-3 border-{{ pm.badge }} border-opacity-25 h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-{{ pm.badge }} bg-opacity-20 text-{{ pm.badge }} rounded-pill px-3 py-1 fs-7">
+                                    <i class="fa-solid {{ pm.icon }} me-1"></i>{{ pm.label }}
+                                </span>
+                                <span class="text-muted small fw-semibold">{{ pm.count }} payments</span>
+                            </div>
+                            <h3 class="fw-bold text-white my-2">
+                                <span class="text-warning fs-6 me-1">{{ currency }}</span>{{ pm.total_amount|floatformat:2 }}
+                            </h3>
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between text-muted fs-8 mb-1">
+                                    <span>Share of Total</span>
+                                    <span class="fw-bold text-light">{{ pm.percentage }}%</span>
+                                </div>
+                                <div class="progress bg-dark" style="height: 6px;">
+                                    <div class="progress-bar bg-{{ pm.badge }}" role="progressbar" 
+                                         style="width: {{ pm.percentage }}%;" 
+                                         aria-valuenow="{{ pm.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center text-muted py-4">
+                        No payments recorded in this period.
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Detailed Table -->
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 custom-report-table">
+                        <thead>
+                            <tr class="text-muted fs-8 text-uppercase">
+                                <th>Method</th>
+                                <th class="text-center">Transactions</th>
+                                <th class="text-end">Total Amount</th>
+                                <th class="text-end">Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pm in report.sales_by_payment_method %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{{ pm.badge }} bg-opacity-20 text-{{ pm.badge }} rounded-pill px-3 py-1">
+                                        <i class="fa-solid {{ pm.icon }} me-1"></i>{{ pm.label }}
+                                    </span>
+                                </td>
+                                <td class="text-center text-white">{{ pm.count }}</td>
+                                <td class="text-end fw-bold text-white font-monospace">
+                                    {{ currency }} {{ pm.total_amount|floatformat:2 }}
+                                </td>
+                                <td class="text-end text-muted font-monospace">{{ pm.percentage }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No data.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if report.sales_by_payment_method %}
+                        <tfoot class="border-top-2 border-warning">
+                            <tr class="fw-bold bg-dark bg-opacity-50 text-white">
+                                <td class="text-uppercase text-warning">Total Payments</td>
+                                <td class="text-center text-warning">{{ report.grand_payment_count }}</td>
+                                <td class="text-end text-warning font-monospace fs-6">{{ currency }} {{ report.grand_payment_amount|floatformat:2 }}</td>
+                                <td class="text-end font-monospace">100.0%</td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Quick preset buttons handler
+    const presets = document.querySelectorAll(".preset-btn");
+    const startInput = document.getElementById("startDateInput");
+    const endInput = document.getElementById("endDateInput");
+    const form = document.getElementById("reportFilterForm");
+
+    function formatDate(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    presets.forEach(btn => {
+        btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            const range = this.dataset.range;
+            const today = new Date();
+            let startDate = new Date();
+            let endDate = new Date();
+
+            if (range === "today") {
+                startDate = today;
+                endDate = today;
+            } else if (range === "last7") {
+                startDate = new Date(today);
+                startDate.setDate(today.getDate() - 6);
+                endDate = today;
+            } else if (range === "last14") {
+                startDate = new Date(today);
+                startDate.setDate(today.getDate() - 13);
+                endDate = today;
+            } else if (range === "thisMonth") {
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = today;
+            } else if (range === "last30") {
+                startDate = new Date(today);
+                startDate.setDate(today.getDate() - 29);
+                endDate = today;
+            }
+
+            if (startInput && endInput && form) {
+                startInput.value = formatDate(startDate);
+                endInput.value = formatDate(endDate);
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

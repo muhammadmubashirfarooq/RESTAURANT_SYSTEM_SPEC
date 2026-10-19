@@ -1,5 +1,6 @@
 from .auth import login_view, logout_view, home_redirect
-from .placeholder import dashboard_view
+from .dashboard import dashboard_view
+from .reports import reports_view, reports_export_csv_view
 from .billing import (
     billing_list_view,
     billing_detail_view,
